@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulado Banco do Brasil - TI (2023)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background: linear-gradient(135deg, #003399de 0%, #ffe100 150%);
+            color: #1a1a1a;
+        }
+
+        /* Cores BB (Azul e Amarelo) */
+
+        .main-layout {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            min-height: 100vh;
+        }
+
+        @media (min-width: 1024px) {
+            .main-layout {
+                flex-direction: row;
+            }
+
+            .main-content {
+                flex: 1;
+                min-height: 100vh;
+            }
+
+            .sidebar {
+                width: 350px;
+                flex-shrink: 0;
+                height: 100vh;
+                overflow-y: auto;
+                position: sticky;
+                top: 0;
+                border-left: 1px solid rgba(0, 0, 0, 0.1);
+                background: rgba(255, 255, 255, 0.9);
+                backdrop-filter: blur(10px);
+            }
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Botões de Resposta (A-E) */
+        .answer-btn {
+            background-color: #f3f4f6;
+            border: 2px solid #e5e7eb;
+            color: #374151;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .answer-btn:hover:not(:disabled) {
+            background-color: #dbeafe;
+            border-color: #3b82f6;
+            color: #1d4ed8;
+        }
+
+        .answer-btn.selected {
+            background-color: #2563eb;
+            color: white;
+            border-color: #1d4ed8;
+        }
+
+        /* Feedback */
+        .answered .answer-btn:not(.selected):not(.correct-answer) {
+            opacity: 0.5;
+        }
+
+        .answered .answer-btn.correct-answer {
+            background-color: #059669;
+            color: white;
+            border-color: #047857;
+        }
+
+        /* Verde */
+        .answered .answer-btn.selected.incorrect-answer {
+            background-color: #dc2626;
+            color: white;
+            border-color: #b91c1c;
+            text-decoration: line-through;
+        }
+
+        /* Vermelho */
+
+        .question-text {
+            white-space: pre-wrap;
+        }
+
+        /* Mantém quebras de linha do texto original */
+    </style>
+</head>
+
+<body class="antialiased">
+
+    <div class="main-layout">
+        <!-- Conteúdo Principal -->
+        <div class="main-content p-4 md:p-8 lg:p-12">
+            <div class="max-w-4xl mx-auto">
+                <div class="mb-6">
+                    <a href="index.html"
+                        class="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-900 font-bold rounded-lg transition-colors shadow-sm">
+                        <span>&larr;</span> Voltar ao Cronograma
+                    </a>
+                </div>
+                <header class="text-center mb-8">
+                    <h1 class="text-3xl md:text-4xl font-extrabold text-blue-900">Simulado Banco do Brasil</h1>
+                    <p class="text-xl font-medium text-yellow-600">Agente de Tecnologia - Prova 2023 (Gabarito 1)</p>
+                </header>
+
+                <!-- Container da Questão -->
+                <main id="quiz-container"></main>
+
+                <!-- Navegação -->
+                <nav class="mt-8 flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
+                    <div class="flex space-x-3">
+                        <button id="prev-btn"
+                            class="py-2 px-6 bg-blue-800 hover:bg-blue-700 text-white font-bold rounded-lg shadow transition disabled:opacity-50">←
+                            Anterior</button>
+                        <button id="next-btn"
+                            class="py-2 px-6 bg-blue-800 hover:bg-blue-700 text-white font-bold rounded-lg shadow transition disabled:opacity-50">Próximo
+                            →</button>
+                    </div>
+                    <div id="question-counter" class="text-sm font-bold text-blue-900">Questão 1 de 70</div>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Sidebar (Placar) -->
+        <aside class="sidebar p-6">
+            <div class="space-y-6">
+                <section class="glass-card p-6">
+                    <h2 class="text-xl font-bold text-blue-900 mb-4 text-center">Seu Desempenho</h2>
+                    <div class="grid grid-cols-2 gap-4 text-center">
+                        <div class="bg-green-100 p-3 rounded-lg">
+                            <p class="text-xs font-bold text-green-600 uppercase">Acertos</p>
+                            <p id="correct-count" class="text-3xl font-extrabold text-green-700">0</p>
+                        </div>
+                        <div class="bg-red-100 p-3 rounded-lg">
+                            <p class="text-xs font-bold text-red-600 uppercase">Erros</p>
+                            <p id="incorrect-count" class="text-3xl font-extrabold text-red-700">0</p>
+                        </div>
+                    </div>
+                    <div class="mt-4 text-center">
+                        <p class="text-sm text-gray-500">Questões Restantes:</p>
+                        <p id="blank-count" class="text-2xl font-bold text-gray-700">70</p>
+                    </div>
+                    <div class="mt-6 pt-6 border-t border-gray-200">
+                        <p class="text-center text-sm font-semibold text-gray-600 mb-2">Nota (Cesgranrio):</p>
+                        <p id="score-percent" class="text-4xl font-black text-center text-blue-900">0%</p>
+                    </div>
+                </section>
+
+                <section class="glass-card p-6">
+                    <a href="assets/provaBB.pdf" target="_blank"
+                        class="block w-full text-center py-3 px-6 bg-yellow-500 hover:bg-blue-700 text-blue-900 font-bold rounded-lg shadow-lg transition duration-200">
+                        Abrir a Prova
+                    </a>
+                    <br>
+                    <button id="reset-btn"
+                        class="w-full py-3 px-4 bg-yellow-500 hover:bg-yellow-400 text-blue-900 font-bold rounded-lg shadow transition">Reiniciar
+                        Simulado
+                    </button>
+                </section>
+
+                <div class="text-xs text-center text-gray-400 mt-8">
+                    Baseado na Prova Agente de Tecnologia<br>Microrregião 158 (2023)
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        // GABARITO 1 - Extraído do PDF fornecido
+        // Formato: { id: numero, text: "Enunciado + Alternativas", answer: "Letra Correta" }
+        const questions = [
+            // LÍNGUA PORTUGUESA
+            { id: 1, answer: "A", text: "1. O trecho do texto que resume o objetivo do \"empreendedorismo social\" é\n\n(A) \"A meta é transformar uma realidade, promover o bem-estar da sociedade e agregar valor com cunho social\". (parágrafo 1)\n(B) \"os empreendimentos sociais analisam seu desempenho a partir do impacto social gerado por sua atuação\". (parágrafo 2)\n(C) \"ser inovadora; realizável; autossustentável; contar com a participação de diversos segmentos da sociedade\". (parágrafo 4)\n(D) \"Quem tem interesse de atuar nessa área precisa trabalhar em grupo e formar parcerias\". (parágrafo 5)\n(E) \"o profissional precisa ter flexibilidade e vontade de explorar, pois é possível que ele acabe exercendo um papel que não seja necessariamente na sua área de formação\". (parágrafo 6)" },
+            { id: 2, answer: "E", text: "2. O texto explica que o empreendedorismo social se diferencia do conceito de negócio social porque o primeiro procura\n\n(A) criar profissionais especializados na sua área de atuação.\n(B) excluir do processo a parcela mais carente da população.\n(C) seguir a lógica tradicional do mercado de ações.\n(D) ter como objetivo produzir retorno financeiro.\n(E) transformar a sociedade por meio da inovação." },
+            { id: 3, answer: "C", text: "3. No trecho \"está relacionado ao ato de empreender ou inovar com o objetivo de alavancar causas sociais e ambientais\" (parágrafo 1), a palavra destacada pode ser substituída, sem prejuízo do sentido do texto, por\n\n(A) comprovar\n(B) defender\n(C) impulsionar\n(D) modificar\n(E) subsidiar" },
+            { id: 4, answer: "D", text: "4. No trecho \"Ainda que não exista uma concepção única sobre o empreendedorismo social\" (parágrafo 1), a expressão destacada pode ser substituída, sem prejuízo do sentido do texto, por\n\n(A) À medida que\n(B) Contanto que\n(C) De modo que\n(D) Mesmo que\n(E) Por causa de" },
+            { id: 5, answer: "A", text: "5. No trecho \"Ainda que não exista uma concepção única\" (parágrafo 1), a palavra destacada pode ser substituída, sem prejuízo do sentido do texto, por\n\n(A) compreensão\n(B) conciliação\n(C) convivência\n(D) capacidade\n(E) semelhança" },
+            { id: 6, answer: "A", text: "6. A palavra destacada atende às exigências de concordância de acordo com a norma-padrão da lingua portuguesa em:\n\n(A) A administração de empresas de tecnologia e o marketing profissional estão envolvidos na promoção de novos negócios na área econômica.\n(B) A assistência social às pessoas carentes e os cuidados com o aparecimento de novas doenças são necessárias para manter a saúde da população.\n(C) A iniciativa de implementar mudanças nas empresas e o sucesso ao alcançar êxito são comemoradas pelos funcionários.\n(D) O financiamento de projetos e a assistência aos necessitados, desejadas pelos empreendedores sociais, precisam da atenção redobrada dos responsáveis.\n(E) A vacinação de toda a população e a intensificação dos estudos sobre a pandemia devem ser implementados pelas autoridades." },
+            { id: 7, answer: "E", text: "7. No trecho \"os empreendimentos sociais analisam seu desempenho\" (parágrafo 2), a palavra destacada se refere a\n\n(A) problema\n(B) comunidade\n(C) daquele grupo\n(D) retorno financeiro\n(E) empreendimentos sociais" },
+            { id: 8, answer: "B", text: "8. De acordo com a norma-padrão da língua portuguesa, o uso do acento grave indicativo da crase é obrigatório na palavra destacada em:\n\n(A) A descrição detalhada de um empreendimento a ser realizado é uma necessidade para a aprovação de sua realização.\n(B) A divulgação do concurso levou muitas pessoas a se candidatarem a vaga mais concorrida na empresa.\n(C) A tentativa de obter a isenção fiscal é buscada a todo custo pelos responsáveis da instituição.\n(D) O sucesso de uma empresa deve ser atribuído a gestores competentes.\n(E) O uso de recursos digitais levou os jovens estudiosos a uma nova forma de aprendizagem em diferentes áreas." },
+            { id: 9, answer: "B", text: "9. O emprego da vírgula atende às exigências da norma-padrão da língua portuguesa em:\n\n(A) A execução de novas tarefas em um supermercado, envolve a disposição dos funcionários de aceitarem as mudanças propostas pelo RH.\n(B) Ao consultar os fornecedores de produtos para suas lojas, os responsáveis por esse departamento devem ser cuidadosos.\n(C) A escolha do funcionário para proferir uma palestra em nome da empresa, compete à administração da instituição.\n(D) O profissional interessado em mudanças na sua área de atuação deve estudar, com antecedência as suas possibilidades de crescimento.\n(E) Para desenvolver projetos cabe ao gerente da organização, a iniciativa de implementar novas técnicas à disposição dos empreendedores." },
+            { id: 10, answer: "D", text: "10. O pronome obliquo destacado foi colocado na posição correta, segundo as exigências da norma-padrão da lingua portuguesa, em:\n\n(A) A área da saúde não encontra-se atendida em regiões afastadas dos grandes centros urbanos nem em comunidades que vivem nas periferias das cidades.\n(B) A preocupação com o meio ambiente tem sido um dos segmentos mais relevantes do empreendedorismo social, porque destina-se a transformar positivamente a sociedade.\n(C) Governantes que têm como missão viabilizar o acesso universal à educação pública de qualidade sempre preocupam-se com ações de inovação e empreendedorismo.\n(D) Para uma iniciativa de empreendedorismo destinada à formação de educadores tornar-se produtiva, é preciso identificar as necessidades do público-alvo de cada comunidade.\n(E) Quando os profissionais que atuam na área de empreendedorismo social sentem-se desanimados, é preciso que eles avaliem todo o progresso que ajudaram a desenvolver." },
+
+            // LÍNGUA INGLESA
+            { id: 11, answer: "A", text: "11. The main purpose of the text is to\n\n(A) present a brief history of money.\n(B) relate the history of money with wars.\n(C) regret society's attitude regarding money.\n(D) deny the importance of money to humankind.\n(E) describe the relevance of money in the world." },
+            { id: 12, answer: "D", text: "12. In the fragment in the fourth paragraph of the text, \"It was the Lydians, around 600 BC, who get credit for a critical step in this process: fashioning the first known coins, which were made of a gold and silver alloy\" the words in bold refer respectively to:\n\n(A) BC - coins\n(B) 600 BC-first\n(C) 600 BC coins\n(D) Lydians coins\n(E) Lydians-known" },
+            { id: 13, answer: "B", text: "13. In the sixth paragraph of the text, the author mentions that paper money first circulated in\n\n(A) Italy\n(B) China\n(C) England\n(D) Australia\n(E) Germany" },
+            { id: 14, answer: "E", text: "14. In the fragment in the seventh paragraph of the text \"One of the problems, though, was that counterfeiters had great success with paper bills\", the word in bold is associated with the idea of\n\n(A) time\n(B) addition\n(C) condition\n(D) emphasis\n(E) opposition" },
+            { id: 15, answer: "D", text: "15. In the tenth paragraph, the author of the text predicts that there are chances artificial intelligence will be able to\n\n(A) manage bank accounts.\n(B) prevent money changes.\n(C) eliminate exchange rates.\n(D) control financial resources.\n(E) avoid inflation and corruption." },
+
+            // MATEMÁTICA
+            { id: 16, answer: "A", text: "16. Um grande banco formará uma comissão que será comandada por três de suas funcionárias, Alice, Beatriz e Carla... Nessas circunstâncias, os respectivos cargos de Alice, Beatriz e Carla serão\n\n(A) gerente, coordenadora e presidente\n(B) gerente, presidente e coordenadora\n(C) coordenadora, presidente e gerente\n(D) presidente, gerente e coordenadora\n(E) presidente, coordenadora e gerente" },
+            { id: 17, answer: "E", text: "17. Uma fábrica vende mensalmente 200 malas a R$ 300,00 cada... Nesse mês, com a venda dessas malas, o valor y, em reais, arrecadado, em função de x, é dado por\n\n(A) y = -200x^2 - 5800x + 63600\n(B) y = -200x^2 - 4000x + 63600\n(C) y = -200x^2 - 5800x + 60000\n(D) y = -200x^2 - 4800x + 60800\n(E) y = -200x^2 - 4000x + 60000" },
+            { id: 18, answer: "B", text: "18. No primeiro dia de agosto, foram registradas 180 reclamações... durante todos os 31 dias do mês de agosto, o total de reclamações registradas será igual a\n\n(A) 7.108\n(B) 7.440\n(C) 7.860\n(D) 8.184\n(E) 8.880" },
+            { id: 19, answer: "B", text: "19. Em um pacote, há algumas cédulas de R$ 10,00, algumas de R$ 20,00, algumas de R$ 50,00 e nada mais... Nesse pacote, o número de cédulas de R$ 10,00 é igual a\n\n(A) 26\n(B) 31\n(C) 37\n(D) 39\n(E) 42" },
+            { id: 20, answer: "D", text: "20. Agora, são H horas e M minutos. Considerando-se apenas as 24 horas do dia de hoje, 3/7 do tempo que já se passou correspondem exatamente ao tempo que falta para a meia-noite. Dessa forma, H + M é igual a\n\n(A) 19\n(B) 24\n(C) 37\n(D) 64\n(E) 96" },
+
+            // ATUALIDADES
+            { id: 21, answer: "A", text: "21. A principal característica dos bancos exclusivamente digitais é a\n\n(A) oferta de produtos e serviços por meio digital.\n(B) oferta de serviços por meio de agências bancárias.\n(C) oferta de todos os serviços operados pelos bancos múltiplos.\n(D) ausência de operações com moeda estrangeira.\n(E) cobrança de taxas similares às cobradas pelos bancos tradicionais." },
+            { id: 22, answer: "D", text: "22. No Sistema Financeiro Nacional, identificam-se os bancos-sombra (shadow banks) como bancos que\n\n(A) possuem diversos tipos de carteiras em suas operações ativas.\n(B) se especializam em transações financeiras como bancos estrangeiros.\n(C) se concentram em transações financeiras no mercado local.\n(D) realizam operações financeiras à margem do sistema de regulação e supervisão do Banco Central do Brasil.\n(E) se originam a partir de indivíduos que se associam para prestar serviços financeiros a seus associados." },
+            { id: 23, answer: "E", text: "23. Ao longo das crises financeiras agudas... Nesse contexto, a moeda assume, precipuamente, a função de\n\n(A) meio de financiamento dos investimentos\n(B) meio de troca\n(C) unidade de conta\n(D) escambo\n(E) reserva de valor" },
+            { id: 24, answer: "B", text: "24. A economia digital propiciou a criação de um modelo de negócios... A plataforma digital descrita acima é denominada\n\n(A) startup\n(B) marketplace\n(C) fintech\n(D) mobile banking\n(E) internet banking" },
+            { id: 25, answer: "A", text: "25. No sistema financeiro contemporâneo, o uso de tecnologias blockchain é considerado revolucionário, porque\n\n(A) possibilita o armazenamento e compartilhamento de dados de forma distribuída, criptografada e sem a intermediação de terceiros.\n(B) envolve múltiplos intermediários financeiros, mas mantém a centralização das informações em apenas um deles.\n(C) permite a quebra do sigilo inerente às transações financeiras.\n(D) elimina as práticas ilegais em curso nas transações financeiras, por meio do uso de linguagem criptografada.\n(E) privilegia a linguagem analógica, em detrimento da digital." },
+
+            // PROBABILIDADE E ESTATÍSTICA
+            { id: 26, answer: "A", text: "26. A distribuição das alturas dos atletas de vôlei de uma determinada seleção é normal... O desvio padrão, em centímetros, dessa distribuição é de, aproximadamente,\n\n(A) 2\n(B) 4\n(C) 8\n(D) 16\n(E) 64" },
+            { id: 27, answer: "C", text: "27. Uma população é formada por quatro números... a variância da distribuição amostral das médias é de\n\n(A) 3,50\n(B) 4,94\n(C) 12,25\n(D) 24,50\n(E) 32,67" },
+            { id: 28, answer: "E", text: "28. Após uma festa de casamento, a anfitriã percebeu que foram esquecidos quatro telefones celulares... A probabilidade de que apenas um desses quatro convidados tenha recebido o seu próprio celular é de\n\n(A) 3/4\n(B) 2/3\n(C) 1/2\n(D) 3/8\n(E) 1/3" },
+            { id: 29, answer: "D", text: "29. Considere que, em uma agência bancária, o tempo médio que um cliente aguardou... O tempo médio de espera para um cliente começar a ser atendido no caixa, considerando essas duas semanas, foi de, aproximadamente,\n\n(A) 5min 50s\n(B) 6min 30s\n(C) 6min 50s\n(D) 7min 30s\n(E) 7min 50s" },
+            { id: 30, answer: "C", text: "30. Para melhorar a educação financeira de seus clientes... Nesse contexto, se um cliente entrou no cheque especial, a probabilidade de que seja do tipo A, é de, aproximadamente,\n\n(A) 65%\n(B) 70%\n(C) 77%\n(D) 82%\n(E) 85%" },
+
+            // CONHECIMENTOS BANCÁRIOS
+            { id: 31, answer: "B", text: "31. Ao decidir pela aplicação em um ativo financeiro... o índice da taxa de juros real ex-ante para os próximos 12 meses é entendido como o índice da\n\n(A) SELIC nominal esperada... variação cambial esperada\n(B) SELIC nominal esperada... inflação esperada\n(C) SELIC nominal acumulada... variação cambial acumulada\n(D) SELIC nominal acumulada... inflação acumulada\n(E) SELIC nominal acumulada... impostos acumulados" },
+            { id: 32, answer: "B", text: "32. As operações diárias de compra e venda de divisas estrangeiras... são parte integrante do mercado\n\n(A) monetário\n(B) cambial\n(C) acionário\n(D) crediticio\n(E) de trabalho" },
+            { id: 33, answer: "C", text: "33. A equação da paridade dos juros, a descoberto, estabelece que... para que os influxos de capitais estrangeiros no Brasil voltem a se estabilizar, será necessário\n\n(A) aumentar o risco-país.\n(B) aumentar a taxa de juros externa.\n(C) aumentar a taxa de juros interna.\n(D) reduzir a taxa de juros interna.\n(E) depreciar o Real brasileiro..." },
+            { id: 34, answer: "A", text: "34. Considere-se a execução, em determinado ano, do orçamento público consolidado do Brasil... o governo brasileiro terá fechado o ano com\n\n(A) déficit fiscal primário\n(B) déficit fiscal nominal\n(C) superávit fiscal primário\n(D) superávit fiscal nominal\n(E) orçamento equilibrado" },
+            { id: 35, answer: "E", text: "35. Um pesquisador na área de finanças públicas e privadas atua, também, como consultor... diversas instituições financeiras, dentre as quais administradoras de\n\n(A) imóveis urbanos\n(B) locação de móveis\n(C) empréstimo de automóveis\n(D) bens antigos de raridade comprovada\n(E) mercado de balcão organizado" },
+
+            // TECNOLOGIA DA INFORMAÇÃO
+            { id: 36, answer: "E", text: "36. Python/Scikit-learn: Um programador quer obter os parâmetros a e b da equação y=ax+b... Qual linha de código deve substituir o comentário # a fazer de modo a realizar essa regressão linear?\n\n(A) model = skl.lr().fit(x, y)\n(B) model = skl.lr(x, y)\n(C) model = skl.LinearRegression(x, y)\n(D) model = skl.LinearRegression([x, y])\n(E) model = skl.LinearRegression().fit(x, y)" },
+            { id: 37, answer: "D", text: "37. Swift: Para isso, o programador deve utilizar o seguinte fragmento de código Swift:\n\n(A) let saida := \"valor total = \\(quantidade*valor)\"\n(B) let saida:= \"valor total = {quantidade*valor}\"\n(C) let saida = \"valor total = %[quantidade*valor]\"\n(D) let saida = \"valor total = \\(quantidade*valor)\"\n(E) let saida = \"valor total = \\[quantidade*valor]\"" },
+            { id: 38, answer: "B", text: "38. Java: Nesse cenário, com que fragmento de código o programador deve começar, de forma correta, a implementação da classe?\n\n(A) class MemoriaCalculovenda extends MemoriaCalculo\n(B) class MemoriaCalculoVenda implements MemoriaCalculo\n(C) class MemoriaCalculoVenda imports MemoriaCalculo\n(D) class MemoriaCalculoVenda inherits MemoriaCalculo\n(E) class MemoriaCalculoVenda uses MemoriaCalculo" },
+            { id: 39, answer: "C", text: "39. No processo de aprendizagem de máquina... Os três níveis dessa hierarquia, listados, respectivamente, da base para o nível mais alto, são:\n\n(A) conhecimento, informação e dado\n(B) dado, conhecimento e informação\n(C) dado, informação e conhecimento\n(D) informação, conhecimento e dado\n(E) informação, dado e conhecimento" },
+            { id: 40, answer: "B", text: "40. TypeScript: O que será exibido no console quando o código acima for executado? (função segredo dobra valores)\n\n(A) \"Executed JavaScript Failed:\"\n(B) [2, 4, 6]\n(C) [6]\n(D) 6\n(E) 12" },
+            { id: 41, answer: "C", text: "41. Processamento de Linguagem Natural: a tokenização consiste em\n\n(A) colocar todos os caracteres da mensagem em minúsculas.\n(B) colocar todos os verbos da mensagem no infinitivo.\n(C) dividir o texto da mensagem em palavras isoladas.\n(D) eliminar todos os marcadores HTML ou XML da mensagem.\n(E) substituir todos os caracteres acentuados..." },
+            { id: 42, answer: "B", text: "42. Aprendizado de Máquina: Para essa tarefa (dividir clientes em grupos sem rótulos prévios), o funcionário de Tl deve utilizar o aprendizado de máquina\n\n(A) independente\n(B) não supervisionado\n(C) por recompensa\n(D) por reforço\n(E) supervisionado" },
+            { id: 43, answer: "D", text: "43. Big Data: Além do grande volume de dados, o Big Data, em sua definição original, considera também a(s) seguinte(s) propriedade(s):\n\n(A) falta de qualidade, apenas\n(B) variedade, apenas\n(C) velocidade, apenas\n(D) variedade e velocidade\n(E) velocidade e falta de qualidade" },
+            { id: 44, answer: "C", text: "44. Big Data: Uma técnica indicada, nesse caso (redução de atributos), é a\n\n(A) Amostragem Aleatória\n(B) Amostragem Estratificada\n(C) Análise de Componentes Principais\n(D) Deduplicação\n(E) Imputação" },
+            { id: 45, answer: "C", text: "45. Python/Pandas: O fragmento de código que deve substituir o comentário # a fazer para obter a saída desejada é\n\n(A) ff = ef['x','y']\n(B) ff = ef[] == 'x' or 'y'\n(C) ff = ef[['x','y']]\n(D) ff = ef.cols('x','y')\n(E) ff = ef.cols(['x','y'])" },
+            { id: 46, answer: "A", text: "46. Android: Esse módulo único e autônomo é conhecido como\n\n(A) activity\n(B) content provider\n(C) fragment\n(D) intent\n(E) manifest" },
+            { id: 47, answer: "E", text: "47. React Native: Entre os Hooks, tem-se o useState, que permite\n\n(A) calcular o estado de um CEP...\n(B) chamar estados específicos...\n(C) declarar uma classe...\n(D) criar uma enumeration...\n(E) manter um estado local em uma função de um componente funcional." },
+            { id: 48, answer: "D", text: "48. Android/Java: Para realizar essa ação (alterar texto de TextView), esse programador deve usar o seguinte fragmento de código:\n\n(A) TextView resultado = \"Sucesso!\";\n(B) resultado := \"Sucesso!\";\n(C) resultado.setValue(\"Sucesso!\");\n(D) resultado.setText(\"Sucesso!\");\n(E) resultado TextView.setValue(\"Sucesso!\");" },
+            { id: 49, answer: "B", text: "49. Ansible: Um playbook é composto de\n\n(A) plays -> modules -> tasks\n(B) plays -> tasks -> modules\n(C) tasks -> modules -> plays\n(D) tasks -> plays -> modules\n(E) modules -> tasks -> play" },
+            { id: 50, answer: "E", text: "50. Kotlin: Entre suas características, está um grau de compatibilidade com Java, que permite\n\n(A) chamar funções feitas em Java, apenas...\n(B) ler dados que foram salvos por apps Java, apenas.\n(C) ler e escrever dados...\n(D) ter suas funções chamadas por Java, apenas...\n(E) construir apps com código parcialmente em Java e parcialmente em Kotlin, sem restrições." },
+            { id: 51, answer: "E", text: "51. Python/NumPy: O fragmento de código acima provoca a seguinte saída (produto escalar de vetor 1x4 com vetor vazio):\n\n(A) 39 [11]\n(B) 39 [1 2 3 5] 11\n(C) [39] [1 2 3 5] 11\n(D) [[39]] [11] [11]\n(E) [[39]] [11] [11]" },
+            { id: 52, answer: "A", text: "52. NoSQL: Uma solução pode ser adotar um banco de dados NoSQL, de tal forma que:\n\n(A) a ausência de um esquema de dados bem definido para os dados necessários de um cliente possa ser corretamente modelada...\n(B) a linguagem SQL utilizada...\n(C) esse novo banco de dados relacional...\n(D) o gerenciador de banco de dados relacional...\n(E) os atributos que hoje representam chaves..." },
+            { id: 53, answer: "D", text: "53. SQL: Que comando SELECT do SQL retorna apenas o CNPJ e a razão social das empresas que não têm \"ESG\" como característica?\n\n(A) SELECT ... WHERE Caracteristica.Sigla <> 'ESG'\n(B) SELECT ... JOIN ... WHERE Tem.cod = 'ESG'\n(C) SELECT ... WHERE C.nome <> 'ESG'\n(D) SELECT E.CNPJ, E.razaoSocial FROM Empresa E WHERE E.CNPJ NOT IN (SELECT T.CNPJ FROM Tem T JOIN Caracteristica C ON (T.cod=C.cod) WHERE C.sigla = 'ESG')\n(E) SELECT ... WHERE ... AND Tem.cod <> 'ESG'" },
+            { id: 54, answer: "C", text: "54. Banco de Dados: Um dos recursos que um profissional de tecnologia da informação tem à disposição para configurar um BD, de modo a melhorar o desempenho de consultas selecionadas, é a criação de\n\n(A) regras de integridade\n(B) visões não materializadas\n(C) indices\n(D) sequências\n(E) gatilhos" },
+            { id: 55, answer: "A", text: "55. SQL: Esse comando SQL (COUNT com joins de Pessoa, Faixa e filtro RJ e idade <= 19)\n\n(A) apresenta quantas são as pessoas que estão na tabela Pessoa, que são jovens e que nasceram no estado do Rio de Janeiro.\n(B) apresenta o nome e o email de jovens nascidos no Rio de Janeiro.\n(C) agrupa pessoas por faixa etária...\n(D) realiza uma operação equivalente à união...\n(E) agrupa pessoas por UF..." },
+            { id: 56, answer: "E", text: "56. SQL: O que o comando SQL \"SELECT CNPJ, sigla FROM Empresa, UF\" (produto cartesiano sem cláusula WHERE) recupera desse banco de dados?\n\n(A) A sigla da UF das sedes...\n(B) Alguns pares de CNPJ e sigla...\n(C) O CNPJ das empresas cadastradas...\n(D) Pares de CNPJ e sigla de todas as empresas...\n(E) Todos os pares de CNPJ e sigla possíveis, de todas as empresas e de todas as UFs cadastradas." },
+            { id: 57, answer: "B", text: "57. SGBD: Uma das várias funcionalidades que um SGBD pode executar é\n\n(A) alertar os administradores...\n(B) controlar que usuários podem ter acesso a que dados.\n(C) estimular os gestores...\n(D) garantir a sequência de execução...\n(E) identificar que dados importantes..." },
+            { id: 58, answer: "E", text: "58. SQL: Que comando SELECT do SQL retorna apenas o CNPJ e a razão social das empresas cuja atividade econômica principal é a construção de edifícios (código 4120-4/00)?\n\n(A) SELECT * ...\n(B) SELECT * ...\n(C) SELECT CNPJ, razaoSocial FROM CNAE ...\n(D) SELECT ... WHERE E.atividade = C.codigo AND C.codigo = 'construção de edifícios'\n(E) SELECT CNPJ, razaoSocial FROM Empresa WHERE atividade = '4120-4/00'" },
+            { id: 59, answer: "D", text: "59. NoSQL: O banco de dados NoSQL mais indicado para representar esses dados (relacionamentos e ligações entre pessoas) é o que utiliza o modelo\n\n(A) chave/valor\n(B) orientado a colunas\n(C) orientado a documentos\n(D) orientado a grafos\n(E) relacional" },
+            { id: 60, answer: "D", text: "60. TypeScript: Analisando o código apresentado (atribuição de float a string), tem-se que a TypeScript\n\n(A) não realiza a inferência de tipo...\n(B) realiza a inferência de tipo, por isso, o código vai rodar...\n(C) realiza a inferência de tipo, por isso, aceita...\n(D) realiza a inferência de tipo, por isso, não aceita a atribuição do tipo number para um tipo string, o que vai gerar um erro de compilação...\n(E) não diferencia valores..." },
+            { id: 61, answer: "B", text: "61. NumPy: Quanto aos valores do campo sentimento (np.where(stars >= 4, 'bom', 'ruim')), o referido comando atribuirá o valor\n\n(A) bom, para stars entre 2 e 5\n(B) bom, para stars 4 e 5\n(C) bom, para stars 3 e 4\n(D) ruim, para stars 4 e 5\n(E) ruim, para stars entre 1 e 4" },
+            { id: 62, answer: "D", text: "62. Big Data: Esse profissional está realizando a seguinte tarefa (identificar anomalias ou resultados raros):\n\n(A) Agrupamento dos dados\n(B) Análise de associações dos dados\n(C) Análise de segmentação dos dados\n(D) Análise de outliers (pontos fora da curva) ou detecção de desvios\n(E) Classificação dos dados e das anomalias" },
+            { id: 63, answer: "A", text: "63. Java: O que será exibido no console quando o método main for executado? (Busca binária de 78 em array)\n\n(A) 54 79 69 72\n(B) 49 72 86 79\n(C) 54 86 69 72 79\n(D) 67 86 72 79\n(E) 54 79 67 69 72" },
+            { id: 64, answer: "B", text: "64. Java (Herança): O que será exibido no console quando o método main for executado? (Classes CAx e CBy)\n\n(A) 10\n(B) 12\n(C) 14\n(D) 18\n(E) 20" },
+            { id: 65, answer: "A", text: "65. Java (Exceções): O que será exibido no console quando o método main for executado?\n\n(A) ac\n(B) a***a\n(C) a***c\n(D) ***Erro***\n(E) vazio" },
+            { id: 66, answer: "A", text: "66. Estrutura de Dados (Pilhas): O que será exibido no console, quando o método exibePilha for executado?\n\n(A) 10 15 25 28\n(B) 10 25 30 40\n(C) 15 10 28 25\n(D) 20 35 34 40\n(E) 40 34 30 60" },
+            { id: 67, answer: "A", text: "67. Árvore Binária: Considerando os valores exibidos (Pré-ordem: 80 84 55 76 72), qual árvore foi recebida como parâmetro?\n\n(A) Raiz 80, Esq 84 (filho 55), Dir 76 (filho 72)\n(B) Raiz 80, Esq 72, Dir 55...\n(C) Raiz 72...\n(D) Raiz 72...\n(E) Lista encadeada..." },
+            { id: 68, answer: "E", text: "68. Modelo E-R: Qual conjunto completa o banco de dados em questão, de modo a atender a todas as regras relativas à relação S (Cardinalidade 0,1 e 1,n)?\n\n(A) S={}\n(B) S={(e1,t1), (e2,t2), (e2,t3)}\n(C) S={ (e1,t1), (e2,t2), (e4,t1) }\n(D) S={(e1,t1), (e1,t2), (e4,t3), (e4,t2)}\n(E) S={(e1,t3), (e2,t2), (e4,t1)}" },
+            { id: 69, answer: "D", text: "69. Modelo E-R (Transformação): Qual transformação da relação Rel irá preservar a semântica do diagrama E-R apresentado (N:N)?\n\n(A) PK (X1, Y1)\n(B) PK (X1, R1)\n(C) PK (Y1, R1)\n(D) PK (X1, Y1, R1) (Considerando entidade fraca ou identificação)\n(E) PK (R1)" },
+            { id: 70, answer: "E", text: "70. Java: Qual método realiza essa tarefa? (Converter minúsculas para maiúsculas, mantendo o resto)\n\n(A) do...while com toUpperCase\n(B) while com concat\n(C) while com array index\n(D) for each char\n(E) public static String converte (String str) { ... for(int i=0; i< str.length(); i++) ... r=r+Character.toUpperCase(str.charAt(i)); ... }" }
+        ];
+
+        const TOTAL_QUESTIONS = questions.length;
+        const quizContainer = document.getElementById('quiz-container');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const questionCounterEl = document.getElementById('question-counter');
+
+        const correctCountEl = document.getElementById('correct-count');
+        const incorrectCountEl = document.getElementById('incorrect-count');
+        const blankCountEl = document.getElementById('blank-count');
+        const scorePercentEl = document.getElementById('score-percent');
+
+        let currentQuestionIndex = 0;
+        let userAnswers = new Array(TOTAL_QUESTIONS).fill(null);
+
+        function renderQuestion(index) {
+            quizContainer.innerHTML = '';
+            const q = questions[index];
+            const userAnswer = userAnswers[index];
+            const isAnswered = userAnswer !== null;
+
+            const card = document.createElement('div');
+            card.className = `glass-card p-6 md:p-8 rounded-2xl shadow-xl ${isAnswered ? 'answered' : ''}`;
+
+            // Cabeçalho da Questão
+            const header = document.createElement('div');
+            header.className = 'flex justify-between items-start mb-6';
+
+            const title = document.createElement('h3');
+            title.className = 'text-lg font-bold text-blue-900';
+            title.textContent = `Questão ${q.id}`;
+
+            // Badge de Feedback
+            const feedback = document.createElement('span');
+            feedback.className = 'px-3 py-1 rounded-full text-xs font-bold hidden';
+            if (isAnswered) {
+                feedback.style.display = 'inline-block';
+                if (userAnswer === q.answer) {
+                    feedback.textContent = 'CORRETA';
+                    feedback.className = 'px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 border border-green-200';
+                } else {
+                    feedback.textContent = `INCORRETA (Gabarito: ${q.answer})`;
+                    feedback.className = 'px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 border border-red-200';
+                }
+            }
+
+            header.appendChild(title);
+            header.appendChild(feedback);
+            card.appendChild(header);
+
+            // Texto da Questão
+            const text = document.createElement('div');
+            text.className = 'question-text text-gray-800 text-base md:text-lg leading-relaxed mb-8';
+            text.textContent = q.text;
+            card.appendChild(text);
+
+            // Botões de Resposta (A, B, C, D, E)
+            const optionsContainer = document.createElement('div');
+            optionsContainer.className = 'grid grid-cols-5 gap-2 sm:gap-4';
+
+            ['A', 'B', 'C', 'D', 'E'].forEach(opt => {
+                const btn = document.createElement('button');
+                btn.textContent = opt;
+                btn.className = 'answer-btn py-3 rounded-lg text-lg shadow-sm';
+                btn.dataset.option = opt;
+
+                // Estados visuais
+                if (userAnswer === opt) btn.classList.add('selected');
+                if (isAnswered) {
+                    btn.disabled = true;
+                    if (opt === q.answer) btn.classList.add('correct-answer');
+                    if (userAnswer === opt && opt !== q.answer) btn.classList.add('incorrect-answer');
+                } else {
+                    btn.addEventListener('click', () => handleAnswer(index, opt));
+                }
+
+                optionsContainer.appendChild(btn);
+            });
+
+            card.appendChild(optionsContainer);
+            quizContainer.appendChild(card);
+
+            updateNavigation();
+        }
+
+        function handleAnswer(index, selectedOption) {
+            if (userAnswers[index] !== null) return; // Já respondeu
+
+            userAnswers[index] = selectedOption;
+            renderQuestion(index); // Re-renderiza para mostrar feedback
+            updateScore();
+        }
+
+        function updateNavigation() {
+            prevBtn.disabled = currentQuestionIndex === 0;
+            nextBtn.disabled = currentQuestionIndex === TOTAL_QUESTIONS - 1;
+            questionCounterEl.textContent = `Questão ${currentQuestionIndex + 1} de ${TOTAL_QUESTIONS}`;
+        }
+
+        function updateScore() {
+            let correct = 0;
+            let incorrect = 0;
+            let blank = 0;
+
+            userAnswers.forEach((ans, idx) => {
+                if (ans === null) {
+                    blank++;
+                } else if (ans === questions[idx].answer) {
+                    correct++;
+                } else {
+                    incorrect++;
+                }
+            });
+
+            correctCountEl.textContent = correct;
+            incorrectCountEl.textContent = incorrect;
+            blankCountEl.textContent = blank;
+
+            const totalAnswered = correct + incorrect;
+            const percent = totalAnswered === 0 ? 0 : Math.round((correct / totalAnswered) * 100);
+            scorePercentEl.textContent = `${percent}%`;
+        }
+
+        function resetSimulado() {
+            if (confirm("Tem certeza? Todo o progresso será perdido.")) {
+                userAnswers.fill(null);
+                currentQuestionIndex = 0;
+                updateScore();
+                renderQuestion(0);
+            }
+        }
+
+        // Listeners
+        prevBtn.addEventListener('click', () => {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                renderQuestion(currentQuestionIndex);
+            }
+        });
+
+        nextBtn.addEventListener('click', () => {
+            if (currentQuestionIndex < TOTAL_QUESTIONS - 1) {
+                currentQuestionIndex++;
+                renderQuestion(currentQuestionIndex);
+            }
+        });
+
+        resetBtn.addEventListener('click', resetSimulado);
+
+        // Init
+        renderQuestion(0);
+        updateScore();
+
+    </script>
+</body>
+
+</html>

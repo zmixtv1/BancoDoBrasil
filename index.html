@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cronograma Banco do Brasil (TI)</title>
+
+    <!-- Carrega o TailwindCSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Font (Inter) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        html, body { height: 100%; margin: 0; font-family: 'Inter', sans-serif; scroll-behavior: smooth; }
+        body { background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); color: #e0e0e0; }
+        
+        .main-layout { display: flex; flex-direction: column; width: 100%; min-height: 100vh; }
+        @media (min-width: 1024px) {
+            .main-layout { flex-direction: row; }
+            .main-content { flex: 1; height: 100vh; overflow-y: auto; }
+            .sidebar { width: 400px; flex-shrink: 0; height: 100vh; overflow-y: auto; position: sticky; top: 0; border-left: 1px solid rgba(255, 255, 255, 0.1); }
+        }
+
+        .glass-card { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.1); -webkit-backdrop-filter: blur(15px); }
+        .sidebar { background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(20px); }
+        .progress-bar-fill { transition: width 0.5s ease-in-out; }
+        
+        .custom-checkbox { appearance: none; -webkit-appearance: none; height: 24px; width: 24px; background-color: rgba(0, 0, 0, 0.3); border: 2px solid rgba(255, 255, 255, 0.2); border-radius: 6px; cursor: pointer; display: inline-block; position: relative; transition: all 0.2s ease; }
+        .custom-checkbox:checked { background-color: #facc15; border-color: #ca8a04; } 
+        .custom-checkbox:checked::after { content: ''; position: absolute; left: 7px; top: 3px; width: 6px; height: 12px; border: solid black; border-width: 0 3px 3px 0; transform: rotate(45deg); }
+        
+        .task-label:has(.custom-checkbox:checked) h3,
+        .task-label:has(.custom-checkbox:checked) p { text-decoration: line-through; color: #6b7280; opacity: 0.6; }
+
+        .pomodoro-mode-btn.active { background-color: #facc15; color: black; font-weight: bold; }
+        input[type="number"] { -moz-appearance: textfield; }
+        input[type="number"]::-webkit-outer-spin-button, input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+        /* Animações */
+        @keyframes burn { 0% { transform: scale(1); filter: brightness(100%); } 50% { transform: scale(1.1); filter: brightness(120%); } 100% { transform: scale(1); filter: brightness(100%); } }
+        .fire-anim { animation: burn 1.5s infinite ease-in-out; }
+        @keyframes heartbeat { 0% { transform: scale(1); } 25% { transform: scale(1.1); } 50% { transform: scale(1); } 100% { transform: scale(1); } }
+        .heart-anim { animation: heartbeat 2s infinite; }
+        
+        /* Highlight para matérias fracas */
+        .weak-spot { border-left: 4px solid #ef4444 !important; background: rgba(239, 68, 68, 0.1); }
+        
+        /* Tag de Video */
+        .video-tag { display: inline-flex; align-items: center; gap: 4px; background: rgba(220, 38, 38, 0.2); color: #fca5a5; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; text-transform: uppercase; border: 1px solid rgba(220, 38, 38, 0.3); }
+        .ti-tag { display: inline-flex; align-items: center; gap: 4px; background: rgba(59, 130, 246, 0.2); color: #93c5fd; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; text-transform: uppercase; border: 1px solid rgba(59, 130, 246, 0.3); }
+        .bonus-tag { display: inline-flex; align-items: center; gap: 4px; background: rgba(34, 197, 94, 0.2); color: #86efac; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; text-transform: uppercase; border: 1px solid rgba(34, 197, 94, 0.3); }
+        .aktu-tag { display: inline-flex; align-items: center; gap: 4px; background: rgba(168, 85, 247, 0.2); color: #d8b4fe; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; text-transform: uppercase; border: 1px solid rgba(168, 85, 247, 0.3); }
+    </style>
+</head>
+
+<body class="antialiased">
+
+    <!-- HUD Gamificado -->
+    <div class="fixed top-4 right-4 z-50 flex gap-3">
+        <div class="flex items-center gap-2 bg-gray-900/90 backdrop-blur border border-red-500/50 px-3 py-2 rounded-full shadow-lg">
+            <span class="text-xl heart-anim">❤️</span>
+            <div class="flex flex-col">
+                <span id="lives-counter" class="text-lg font-black text-red-400 leading-none">3</span>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 bg-gray-900/90 backdrop-blur border border-orange-500/50 px-4 py-2 rounded-full shadow-lg shadow-orange-500/20">
+            <span id="fire-icon" class="text-2xl grayscale opacity-50 transition-all duration-500">🔥</span>
+            <div class="flex flex-col">
+                <span id="streak-counter" class="text-xl font-black text-orange-400 leading-none">0</span>
+                <span class="text-[0.6rem] font-bold text-gray-400 uppercase tracking-wider">Dias</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-layout">
+        <!-- Conteúdo Principal -->
+        <div class="main-content p-4 md:p-8 pt-20 lg:pt-8">
+            <div class="max-w-4xl mx-auto">
+                <header class="text-center mb-8">
+                    <h1 class="text-3xl md:text-4xl font-extrabold text-white tracking-tight">Plano de Estudos <span class="text-yellow-400">Banco Do Brasil</span></h1>
+                    <p class="text-gray-400 mt-2">Todas as Playlists Integradas.</p>
+                    <p class="text-xs text-blue-400 mt-1 font-bold uppercase tracking-widest">Início: 29/12/2025</p>
+                </header>
+
+                <div class="mb-8 glass-card p-4 rounded-xl">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-sm font-medium text-gray-300">Progresso da Jornada</span>
+                        <span id="overall-progress-text" class="text-sm font-bold text-yellow-400">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-4 overflow-hidden">
+                        <div id="overall-progress-bar" class="bg-gradient-to-r from-yellow-400 to-yellow-600 h-4 rounded-full progress-bar-fill" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <main id="schedule-card" class="glass-card rounded-2xl shadow-2xl overflow-hidden w-full transition-all duration-300 mb-6 border border-white/10">
+                    <div class="px-6 py-5 bg-blue-900/40 border-b border-white/10 flex justify-between items-center">
+                        <div>
+                            <div class="flex items-center gap-3">
+                                <span id="day-of-week" class="text-2xl font-bold text-white">...</span>
+                                <span id="phase-label" class="text-xs font-bold uppercase tracking-wider bg-blue-500/20 text-blue-300 px-2 py-1 rounded border border-blue-500/30">...</span>
+                            </div>
+                            <span id="date" class="text-sm text-gray-400 mt-1 block">...</span>
+                        </div>
+                        <div class="text-right">
+                            <span id="days-count" class="text-xs font-mono text-yellow-400 bg-yellow-400/10 px-2 py-1 rounded">Dia #...</span>
+                        </div>
+                    </div>
+
+                    <div class="p-6 space-y-4">
+                        <!-- Manhã -->
+                        <label for="check-bloco1" id="label-bloco1" class="task-label group flex items-start space-x-4 p-4 rounded-xl transition-all duration-200 hover:bg-white/5 border border-transparent hover:border-white/10 cursor-pointer bg-black/20">
+                            <div class="pt-1"><input type="checkbox" id="check-bloco1" class="custom-checkbox"></div>
+                            <div class="flex-1">
+                                <div class="flex justify-between mb-1 items-center">
+                                    <h3 class="text-xs font-bold text-yellow-400 uppercase tracking-widest">Manhã (Aula em Vídeo)</h3>
+                                    <span class="text-[10px] text-gray-400 font-mono bg-white/5 px-2 py-0.5 rounded border border-white/10">⏱️ 1h 30m</span>
+                                </div>
+                                <div class="flex flex-col gap-1">
+                                    <p id="task-bloco1" class="text-lg font-medium text-white leading-snug">...</p>
+                                    <p class="text-sm text-gray-400 mt-1 border-l-2 border-yellow-500/30 pl-3 italic" id="detail-bloco1">...</p>
+                                </div>
+                            </div>
+                        </label>
+
+                        <!-- Tarde -->
+                        <label for="check-bloco2" id="label-bloco2" class="task-label group flex items-start space-x-4 p-4 rounded-xl transition-all duration-200 hover:bg-white/5 border border-transparent hover:border-white/10 cursor-pointer bg-black/20">
+                            <div class="pt-1"><input type="checkbox" id="check-bloco2" class="custom-checkbox"></div>
+                            <div class="flex-1">
+                                <div class="flex justify-between mb-1 items-center">
+                                    <h3 class="text-xs font-bold text-blue-400 uppercase tracking-widest">Tarde (Manutenção/TI)</h3>
+                                    <span class="text-[10px] text-gray-400 font-mono bg-white/5 px-2 py-0.5 rounded border border-white/10">⏱️ 1h 30m</span>
+                                </div>
+                                <div class="flex flex-col gap-1">
+                                    <p id="task-bloco2" class="text-lg font-medium text-white leading-snug">...</p>
+                                    <p class="text-sm text-gray-400 mt-1 border-l-2 border-blue-500/30 pl-3 italic" id="detail-bloco2">...</p>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+                </main>
+
+                <nav class="flex justify-between items-center gap-4 bg-black/20 p-4 rounded-xl border border-white/5">
+                    <button id="prev-btn" class="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm font-bold transition-colors disabled:opacity-50"><span>&larr;</span> Ant</button>
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm text-gray-400">Dia:</span>
+                        <input type="number" id="day-input" class="w-16 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-center text-white font-bold focus:ring-2 focus:ring-yellow-400 outline-none">
+                        <button id="jump-btn" class="px-3 py-1 bg-blue-600 hover:bg-blue-500 rounded text-xs font-bold uppercase tracking-wide">Ir</button>
+                    </div>
+                    <button id="next-btn" class="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-bold transition-colors disabled:opacity-50">Prox <span>&rarr;</span></button>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <aside class="sidebar p-6 flex flex-col gap-6 border-l border-white/5 overflow-y-auto">
+            <section class="glass-card p-6 rounded-xl text-center mt-14">
+                <h3 class="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">Modo Foco</h3>
+                <div id="timer-display" class="text-6xl font-black text-white mb-4 tabular-nums tracking-tighter font-[monospace]">40:00</div>
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                    <button id="mode-pomodoro" class="pomodoro-mode-btn active py-2 rounded text-xs uppercase tracking-wide">Estudar</button>
+                    <button id="mode-short-break" class="pomodoro-mode-btn bg-gray-700 text-gray-300 py-2 rounded text-xs uppercase tracking-wide">Pausa</button>
+                </div>
+                <div class="flex gap-2">
+                    <button id="start-pause-btn" class="flex-1 py-3 bg-green-600 hover:bg-green-500 text-white font-bold rounded-lg shadow-lg">INICIAR</button>
+                    <button id="reset-btn" class="px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-lg">↺</button>
+                </div>
+            </section>
+
+            <section class="mt-auto pt-6 border-t border-gray-700">
+                <p id="reset-text" class="text-xs text-gray-500 text-center mb-2">Restam 3 realinhamentos</p>
+                <button id="reset-btn-action" onclick="resetScheduleDate()" class="w-full py-2 px-4 bg-gray-800 hover:bg-red-900/40 text-gray-400 hover:text-red-300 text-xs font-bold rounded-lg border border-gray-700 border-dashed transition-all flex items-center justify-center gap-2">
+                    <span>🔄</span> Realinhar para HOJE
+                </button>
+            </section>
+        </aside>
+    </div>
+
+    <script>
+        // --- CONFIGURAÇÃO DE DATAS ---
+        const targetStartDate = new Date(2025, 11, 29); 
+        targetStartDate.setHours(0,0,0,0);
+        let savedStartDate = localStorage.getItem('bb-start-date');
+
+        if (!savedStartDate) {
+            savedStartDate = targetStartDate.toISOString();
+            localStorage.setItem('bb-start-date', savedStartDate);
+        } else {
+            const currentSavedDate = new Date(savedStartDate);
+            currentSavedDate.setHours(0,0,0,0);
+            if (currentSavedDate.getTime() !== targetStartDate.getTime()) {
+                savedStartDate = targetStartDate.toISOString();
+                localStorage.setItem('bb-start-date', savedStartDate);
+            }
+        }
+        const startDate = new Date(savedStartDate);
+        startDate.setHours(0,0,0,0);
+        const totalProgramDays = 120;
+        
+        // --- BANCO DE DADOS 100% GRAN CURSOS ---
+        const topics = {
+            // Disciplina: Probabilidade e Estatística (20 Aulas)
+            estatistica: [
+                { title: "Aula 01: Conceitos Iniciais I", detail: "▶️ Vídeo (33min): Estatística Descritiva - Conceitos Iniciais, População, Amostra." },
+                { title: "Aula 02: Conceitos Iniciais II", detail: "▶️ Vídeo (35min): Distribuição de Frequência." },
+                { title: "Aula 03: Conceitos Iniciais III", detail: "▶️ Vídeo (33min): Aprofundamento em Distribuição." },
+                { title: "Aula 04: Tendência Central I", detail: "▶️ Vídeo (37min): Medidas para Valores Discretos." },
+                { title: "Aula 05: Tendência Central II", detail: "▶️ Vídeo (31min): Exercícios Valores Discretos." },
+                { title: "Aula 06: Valores Agrupados I", detail: "▶️ Vídeo (32min): Média, Mediana e Moda (Agrupados)." },
+                { title: "Aula 07: Valores Agrupados II", detail: "▶️ Vídeo (42min): Resolução de problemas complexos." },
+                { title: "Aula 08: Medidas de Dispersão I", detail: "▶️ Vídeo (35min): Amplitude, Variância e Desvio." },
+                { title: "Aula 09: Medidas de Dispersão II", detail: "▶️ Vídeo (25min): Coeficiente de Variação." },
+                { title: "Aula 10: Medidas de Dispersão III", detail: "▶️ Vídeo (36min): Exercícios Avançados." },
+                { title: "Aula 11: Medidas de Dispersão IV", detail: "▶️ Vídeo (38min): Fechamento de Dispersão." },
+                { title: "Aula 12: Inferencial - Amostragem I", detail: "▶️ Vídeo (31min): Tipos e Técnicas de Amostragem." },
+                { title: "Aula 13: Inferencial - Amostragem II", detail: "▶️ Vídeo (21min): Amostragem Estratificada e Sistemática." },
+                { title: "Aula 14: Inferencial - Amostragem III", detail: "▶️ Vídeo (26min): Exercícios de Amostragem." },
+                { title: "Aula 15: Bayes e Prob. Total I", detail: "▶️ Vídeo (41min): Teorema da Probabilidade Total." },
+                { title: "Aula 16: Bayes e Prob. Total II", detail: "▶️ Vídeo (31min): Teorema de Bayes." },
+                { title: "Aula 17: Bayes e Prob. Total III", detail: "▶️ Vídeo (35min): Exercícios de Bayes." },
+                { title: "Aula 18: Probabilidade - Teoria I", detail: "▶️ Vídeo (30min): Definições e Axiomas." },
+                { title: "Aula 19: Probabilidade - Exercícios", detail: "▶️ Vídeo (36min): Resolução de Questões." },
+                { title: "Aula 20: Probabilidade - Teoria II", detail: "▶️ Vídeo (39min): Aprofundamento em Propriedades." }
+            ],
+            // Disciplina: Tecnologia da Informação (15 Aulas)
+            ti: [
+                { title: "Aula 01: Machine Learning", detail: "▶️ Vídeo: Fundamentos, algoritmos supervisionados/não supervisionados, NLP." },
+                { title: "Aula 02: Banco de Dados NoSQL", detail: "▶️ Vídeo: Grafos, colunas, chave/valor, documentos. MongoDB." },
+                { title: "Aula 03: Data Warehouse", detail: "▶️ Vídeo: Modelagem conceitual, dados multidimensionais." },
+                { title: "Aula 04: Big Data", detail: "▶️ Vídeo: Fundamentos de Big Data." },
+                { title: "Aula 05: Preparação de Dados", detail: "▶️ Vídeo: Técnicas de preparação de dados." },
+                { title: "Aula 06: Apresentação de Dados", detail: "▶️ Vídeo: Técnicas de apresentação de dados." },
+                { title: "Aula 07: SQL e SGBDs", detail: "▶️ Vídeo: SQL2008, Modelagem conceitual/relacional, PostgreSQL." },
+                { title: "Aula 08: Desenv. Mobile", detail: "▶️ Vídeo: Java/Kotlin, Swift, Android API 30, iOS Xcode 10." },
+                { title: "Aula 09: Algoritmos de Ordenação", detail: "▶️ Vídeo: Bolha, seleção, inserção." },
+                { title: "Aula 10: TypeScript", detail: "▶️ Vídeo: TypeScript 4.0." },
+                { title: "Aula 11: Estruturas de Dados", detail: "▶️ Vídeo: Lista encadeada, pilha, fila, árvore binária." },
+                { title: "Aula 12: Java SE 11", detail: "▶️ Vídeo: Java Standard Edition 11." },
+                { title: "Aula 13: Java EE 8", detail: "▶️ Vídeo: Java Enterprise Edition 8." },
+                { title: "Aula 14: Ansible", detail: "▶️ Vídeo: Ferramentas e Linguagens para manipulação de dados: Ansible." },
+                { title: "Aula 15: React Native", detail: "▶️ Vídeo: Desenvolvimento com React Native." }
+            ],
+            // Disciplina: Conhecimentos Bancários (21 Aulas)
+            bancarios: [
+                { title: "Aula 01: SFN Estrutura", detail: "▶️ Vídeo: Estrutura do SFN, Órgãos normativos e instituições supervisoras." },
+                { title: "Aula 02: Mercado Financeiro", detail: "▶️ Vídeo: Mercados monetário, de crédito, de capitais e cambial." },
+                { title: "Aula 03: Produtos Bancários", detail: "▶️ Vídeo: Cartões, crédito, rural, poupança, capitalização, previdência, consórcio, seguros." },
+                { title: "Aula 04: Mercado de Capitais", detail: "▶️ Vídeo: Noções gerais de Mercado de capitais." },
+                { title: "Aula 05: Garantias do SFN", detail: "▶️ Vídeo: Aval, fiança, penhor, alienação fiduciária, hipoteca, fianças bancárias." },
+                { title: "Aula 06: Política Monetária & Juros", detail: "▶️ Vídeo: Selic, operações compromissadas, curva de juros, juros nominais e reais." },
+                { title: "Aula 07: Mercado de Câmbio", detail: "▶️ Vídeo: Taxas de câmbio, regimes cambiais, impacto nas exportações/importações." },
+                { title: "Aula 08: Orçamento & Dívida", detail: "▶️ Vídeo: Orçamento público, títulos do Tesouro Nacional e dívida pública." },
+                { title: "Aula 09: Dinâmica & Mercado Bancário", detail: "▶️ Vídeo: Interbancário, tesouraria, varejo bancário e recuperação de crédito." },
+                { title: "Aula 10: Lavagem de Dinheiro", detail: "▶️ Vídeo: Lei nº 9.613/98, Circular 3.978, Carta Circular 4.001." },
+                { title: "Aula 11: Autorregulação & SARB", detail: "▶️ Vídeo: Autorregulação bancária e Normativos SARB." },
+                { title: "Aula 12: Sigilo Bancário", detail: "▶️ Vídeo: Lei Complementar nº 105/2001 e suas alterações." },
+                { title: "Aula 13: LGPD", detail: "▶️ Vídeo: Lei Geral de Proteção de Dados (Lei nº 13.709/2018)." },
+                { title: "Aula 14: Legislação Anticorrupção", detail: "▶️ Vídeo: Lei nº 12.846/2013 (Lei Anticorrupção)." },
+                { title: "Aula 15: Decreto 11.129", detail: "▶️ Vídeo: Regulamentação da Lei Anticorrupção (Decreto nº 11.129/2022)." },
+                { title: "Aula 16: Segurança Cibernética", detail: "▶️ Vídeo: Resolução CMN nº 4.893/2021." },
+                { title: "Aula 17: Ética Aplicada", detail: "▶️ Vídeo: Ética, moral, valores e virtudes." },
+                { title: "Aula 18: Ética Empresarial", detail: "▶️ Vídeo: Gestão da ética nas empresas públicas e privadas." },
+                { title: "Aula 19: Código de Ética BB", detail: "▶️ Vídeo: Código de Ética do Banco do Brasil." },
+                { title: "Aula 20: Resp. Socioambiental BB", detail: "▶️ Vídeo: Política de Responsabilidade Socioambiental do BB." },
+                { title: "Aula 21: ASG (ESG)", detail: "▶️ Vídeo: Economia Sustentável, Financiamentos, Mercado PJ." }
+            ],
+            // Disciplina: Atualidades do Mercado Financeiro (12 Aulas)
+            atualidades: [
+                { title: "Aula 01: Bancos na Era Digital", detail: "▶️ Vídeo (33min): Atualidade, Tendências e Desafios." },
+                { title: "Aula 02: Internet/Mobile Banking", detail: "▶️ Vídeo (39min): Banco Digital e Banco Digitalizado." },
+                { title: "Aula 03: Startup, Fintech, Bigtech", detail: "▶️ Vídeo (46min): Conceitos e diferenças." },
+                { title: "Aula 04: Marketplace", detail: "▶️ Vídeo (22min): Conceito e aplicação no setor bancário." },
+                { title: "Aula 05: SupTech e RegTech", detail: "▶️ Vídeo (30min): Inovações tecnológicas na regulação." },
+                { title: "Aula 06: SCD e SEP I", detail: "▶️ Vídeo (45min): Sociedade de Crédito Direto e entre Pessoas." },
+                { title: "Aula 07: SCD e SEP II", detail: "▶️ Vídeo (38min): Continuação SCD e SEP." },
+                { title: "Aula 08: Open Finance", detail: "▶️ Vídeo (36min): Resolução Conjunta Nº 1/2020." },
+                { title: "Aula 09: Shadow Banking", detail: "▶️ Vídeo (37min): Sistema de Banco Sombra." },
+                { title: "Aula 10: Novos Modelos I", detail: "▶️ Vídeo (41min): Novos modelos de negócios no setor." },
+                { title: "Aula 11: Novos Modelos II", detail: "▶️ Vídeo (32min): Continuação Novos Modelos." },
+                { title: "Aula 12: Novos Modelos III", detail: "▶️ Vídeo (23min): Fechamento Novos Modelos." }
+            ],
+            // Disciplina: Língua Portuguesa (12 Aulas Mapeadas)
+            portugues: [
+                { title: "Aula 01: Interpretação de Texto I", detail: "▶️ Vídeo (32min): Reescritura, Compreensão e Interpretação." },
+                { title: "Aula 02: Interpretação Cebraspe I", detail: "▶️ Vídeo (40min): Questões de Certo ou Errado." },
+                { title: "Aula 03: Interpretação Cebraspe II", detail: "▶️ Vídeo (37min): Continuação questões Certo ou Errado." },
+                { title: "Aula 04: Interpretação Cebraspe III", detail: "▶️ Vídeo (36min): Aprofundamento interpretação." },
+                { title: "Aula 05: Interpretação Cebraspe IV", detail: "▶️ Vídeo (24min): Fechamento interpretação Cebraspe." },
+                { title: "Aula 06: Interpretação Cebraspe V", detail: "▶️ Vídeo (34min): Mais exercícios práticos." },
+                { title: "Aula 07: Interpretação Cebraspe VI", detail: "▶️ Vídeo (39min): Revisão de interpretação." },
+                { title: "Aula 08: Interpretação Múltipla Escolha I", detail: "▶️ Vídeo (31min): Foco em questões ABCDE." },
+                { title: "Aula 09: Interpretação Múltipla Escolha II", detail: "▶️ Vídeo (28min): Resolução de provas anteriores." },
+                { title: "Aula 10: Interpretação Múltipla Escolha III", detail: "▶️ Vídeo (34min): Continuação exercícios." },
+                { title: "Aula 11: Interpretação Múltipla Escolha IV", detail: "▶️ Vídeo (45min): Questões avançadas." },
+                { title: "Aula 12: Interpretação Múltipla Escolha V", detail: "▶️ Vídeo (46min): Simulado final de interpretação." }
+            ],
+            // Disciplina: Redação Discursiva (12 Aulas Mapeadas)
+            redacao: [
+                { title: "Aula 01: O Texto Dissertativo", detail: "▶️ Vídeo (32min): O que é um Texto Dissertativo Argumentativo." },
+                { title: "Aula 02: Estrutura do Texto", detail: "▶️ Vídeo (32min): Como Estruturar o Texto Argumentativo." },
+                { title: "Aula 03: Elaboração da Dissertação", detail: "▶️ Vídeo (31min): Como Elaborar Uma Dissertação Argumentativa." },
+                { title: "Aula 04: Introdução e Conclusão", detail: "▶️ Vídeo (30min): Como Elaborar os Parágrafos de Introdução e de Conclusão." },
+                { title: "Aula 05: Desenvolvimento", detail: "▶️ Vídeo (32min): Como Elaborar os Parágrafos de Desenvolvimento." },
+                { title: "Aula 06: Solidez na Argumentação", detail: "▶️ Vídeo (33min): Como Dar Solidez Às Ideias da Argumentação." },
+                { title: "Aula 07: Apresentação e Referências", detail: "▶️ Vídeo (33min): Critérios de Apresentação e de Referências no Texto." },
+                { title: "Aula 08: Aspectos Gramaticais I", detail: "▶️ Vídeo (31min): Aspectos Gramaticais e de Linguagem." },
+                { title: "Aula 09: Aspectos Gramaticais II", detail: "▶️ Vídeo (30min): Continuação Aspectos Gramaticais." },
+                { title: "Aula 10: Aspectos Gramaticais III", detail: "▶️ Vídeo (28min): Fechamento Aspectos Gramaticais." },
+                { title: "Aula 11: Análise de Redações", detail: "▶️ Vídeo (32min): Análise de Redações Elaboradas (Exemplos Práticos)." },
+                { title: "Aula 12: Considerações Finais", detail: "▶️ Vídeo (29min): Dicas finais para a prova de redação." }
+            ],
+            // Disciplina: Língua Inglesa (12 Aulas Mapeadas)
+            ingles: [
+                { title: "Aula 01: Ortografia - Apresentação", detail: "▶️ Vídeo (31min): Apresentação e Ortografia." },
+                { title: "Aula 02: Ortografia - Acentuação", detail: "▶️ Vídeo (35min): Regras de acentuação." },
+                { title: "Aula 03: Ortografia - Exercícios", detail: "▶️ Vídeo (51min): Resolução de questões de acentuação." },
+                { title: "Aula 04: Ortografia - Hífen", detail: "▶️ Vídeo (32min): Uso do hífen." },
+                { title: "Aula 05: Ortografia - Hífen Exercícios", detail: "▶️ Vídeo (27min): Prática sobre hífen." },
+                { title: "Aula 06: Morfologia I", detail: "▶️ Vídeo (25min): Introdução à Morfologia." },
+                { title: "Aula 07: Morfologia II", detail: "▶️ Vídeo (43min): Classes de palavras (aprofundamento)." },
+                { title: "Aula 08: Morfologia III", detail: "▶️ Vídeo (46min): Continuação classes de palavras." },
+                { title: "Aula 09: Morfologia IV", detail: "▶️ Vídeo (41min): Análise morfológica." },
+                { title: "Aula 10: Morfologia Exercícios", detail: "▶️ Vídeo (52min): Questões de morfologia." },
+                { title: "Aula 11: Introdução à Sintaxe", detail: "▶️ Vídeo (34min): Conceitos básicos de sintaxe." },
+                { title: "Aula 12: Sujeito", detail: "▶️ Vídeo (38min): Tipos de sujeito e concordância." }
+            ],
+            // Disciplina: Matemática (4 Aulas Mapeadas)
+            matematica: [
+                { title: "Aula 01: Números e Proporções", detail: "▶️ Vídeo: Números inteiros, racionais e reais; contagem; Razões e proporções; regra de três." },
+                { title: "Aula 02: Funções e Matrizes", detail: "▶️ Vídeo: Medidas, conjuntos, funções (polinomiais, exponenciais, logarítmicas) e Matrizes." },
+                { title: "Aula 03: Determinantes", detail: "▶️ Vídeo: Estudo de Determinantes." },
+                { title: "Aula 04: Sistemas e Sequências", detail: "▶️ Vídeo: Sistemas lineares, Sequências (PA e PG) e Lógica Proposicional." }
+            ],
+            inteligencia_emocional: [
+                { title: "Inteligência Emocional", detail: "🧘 Vídeo Bônus: Gestão de estresse e soft skills." }
+            ],
+            reprise: [
+                { title: "Reprise Eventos", detail: "📺 Revisão: Maratonar aulões de revisão do GranCursos." }
+            ]
+        };
+
+        // --- GERADOR DE CRONOGRAMA INTELIGENTE ---
+        function generateSchedule() {
+            const days = [];
+            let currentDate = new Date(startDate);
+            
+            // Índices de Controle
+            let idxStat = 0, idxTI = 0, idxBank = 0, idxPort = 0, idxIng = 0, idxMat = 0, idxAtu = 0, idxRed = 0, idxIE = 0, idxRep = 0;
+
+            for (let i = 0; i < totalProgramDays; i++) {
+                const dateStr = currentDate.toLocaleDateString('pt-BR');
+                const weekDay = currentDate.toLocaleDateString('pt-BR', { weekday: 'long' });
+                const weekDayCap = weekDay.charAt(0).toUpperCase() + weekDay.slice(1);
+                
+                let morning, afternoon, phase;
+                const dayOfWeek = currentDate.getDay(); // 0=Dom, 6=Sab
+
+                if (dayOfWeek === 0) { // Domingo
+                    phase = "Domingo de Revisão";
+                    morning = topics.reprise[idxRep % topics.reprise.length];
+                    afternoon = { title: "Planejamento Semanal", detail: "Organizar a agenda da próxima semana." };
+                    idxRep++;
+                } 
+                else if (dayOfWeek === 6) { // Sábado (Dia de temas diversos)
+                    phase = "Sábado Diversificado";
+                    // Manhã: Agora roda a playlist de Atualidades
+                    morning = topics.atualidades[idxAtu % topics.atualidades.length];
+                    morning.isAtualidades = true;
+                    
+                    // Tarde: Inteligência Emocional
+                    afternoon = topics.inteligencia_emocional[idxIE % topics.inteligencia_emocional.length];
+                    
+                    // Quinzenalmente: Redação
+                    if (i % 14 === 5) { 
+                        afternoon = topics.redacao[idxRed % topics.redacao.length];
+                        afternoon.isRedacao = true; // Tag nova
+                        idxRed++;
+                    }
+                    
+                    idxAtu++; idxIE++;
+                }
+                else {
+                    // Dias de Semana (Seg-Sex)
+                    phase = "Foco: Estatística & TI";
+
+                    // MANHÃ: Prioridade para Estatística (3x) e Bancários/Matemática (2x)
+                    if (dayOfWeek === 1 || dayOfWeek === 3 || dayOfWeek === 5) { // Seg, Qua, Sex
+                        morning = topics.estatistica[idxStat % topics.estatistica.length];
+                        morning.isWeakSpot = true; 
+                        if(dayOfWeek === 1) idxStat++; 
+                        idxStat++; 
+                    } else { // Ter, Qui
+                        // Alterna entre Bancários e Matemática
+                        if (dayOfWeek === 2) {
+                            morning = topics.bancarios[idxBank % topics.bancarios.length];
+                            idxBank++;
+                        } else {
+                            morning = topics.matematica[idxMat % topics.matematica.length];
+                            idxMat++;
+                        }
+                    }
+
+                    // TARDE: Carrossel de Manutenção
+                    if (dayOfWeek === 1 || dayOfWeek === 3 || dayOfWeek === 5) {
+                        afternoon = topics.ti[idxTI % topics.ti.length];
+                        afternoon.isTI = true;
+                        idxTI++;
+                    } else if (dayOfWeek === 2) {
+                        // Terça à Tarde: Playlist de Português
+                        afternoon = topics.portugues[idxPort % topics.portugues.length];
+                        idxPort++;
+                    } else if (dayOfWeek === 4) {
+                        // Quinta à Tarde: Playlist de Inglês
+                        afternoon = topics.ingles[idxIng % topics.ingles.length];
+                        idxIng++;
+                    }
+                }
+
+                days.push({ date: dateStr, weekday: weekDayCap, morning, afternoon, phase, dayNum: i + 1 });
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+            return days;
+        }
+
+        const schedule = generateSchedule();
+
+        // --- UI & GAMIFICAÇÃO (Mantido) ---
+        function initGamification() {
+            let streak = parseInt(localStorage.getItem('bb-streak-count') || '0');
+            let lives = parseInt(localStorage.getItem('bb-lives') || '3');
+            document.getElementById('streak-counter').textContent = streak;
+            document.getElementById('lives-counter').textContent = lives;
+            if(streak > 0) document.getElementById('fire-icon').classList.remove('grayscale', 'opacity-50');
+        }
+
+        function registerActivity() {
+            const today = new Date().toLocaleDateString('pt-BR');
+            const last = localStorage.getItem('bb-last-study-date');
+            if(last !== today) {
+                let s = parseInt(localStorage.getItem('bb-streak-count')||'0') + 1;
+                localStorage.setItem('bb-streak-count', s);
+                localStorage.setItem('bb-last-study-date', today);
+                document.getElementById('streak-counter').textContent = s;
+                document.getElementById('fire-icon').classList.remove('grayscale', 'opacity-50');
+                document.getElementById('fire-icon').classList.add('fire-anim');
+            }
+        }
+
+        let currentDayIndex = 0;
+        function updateUI(index) {
+            const day = schedule[index];
+            document.getElementById('day-of-week').textContent = day.weekday;
+            document.getElementById('date').textContent = day.date;
+            document.getElementById('phase-label').textContent = day.phase;
+            document.getElementById('days-count').textContent = `Dia #${day.dayNum}`;
+            
+            const t1 = document.getElementById('task-bloco1');
+            const d1 = document.getElementById('detail-bloco1');
+            const l1 = document.getElementById('label-bloco1');
+            
+            t1.textContent = day.morning.title;
+            d1.textContent = day.morning.detail;
+            
+            // Lógica de Tags Manhã
+            if(day.morning.isWeakSpot) {
+                l1.classList.add('weak-spot');
+                d1.innerHTML = `<span class="video-tag">▶️ VÍDEO PRIORITÁRIO</span><br>` + day.morning.detail.replace("▶️ Vídeo", "");
+            } else if (day.morning.isAtualidades) {
+                l1.classList.remove('weak-spot');
+                d1.innerHTML = `<span class="aktu-tag">📰 ATUALIDADES</span><br>` + day.morning.detail;
+            } else if (day.morning.title.includes("Inteligência") || day.morning.title.includes("Reprise")) {
+                l1.classList.remove('weak-spot');
+                d1.innerHTML = `<span class="bonus-tag">🌟 BÔNUS</span><br>` + day.morning.detail;
+            } else {
+                l1.classList.remove('weak-spot');
+                d1.innerHTML = day.morning.detail;
+            }
+
+            const t2 = document.getElementById('task-bloco2');
+            const d2 = document.getElementById('detail-bloco2');
+            const l2 = document.getElementById('label-bloco2');
+
+            t2.textContent = day.afternoon.title;
+            d2.textContent = day.afternoon.detail;
+
+            // Lógica de Tags Tarde
+            if(day.afternoon.isTI) {
+                d2.innerHTML = `<span class="ti-tag">💻 PRÁTICA TI</span><br>` + day.afternoon.detail.replace("▶️ Vídeo", "");
+            } else if (day.afternoon.isRedacao) {
+                d2.innerHTML = `<span class="bonus-tag">✍️ REDAÇÃO</span><br>` + day.afternoon.detail.replace("▶️ Vídeo", "");
+            } else {
+                d2.innerHTML = day.afternoon.detail;
+            }
+
+            const key = `bb-progress-${day.date.replace(/\//g, '-')}`;
+            const saved = JSON.parse(localStorage.getItem(key) || '{"b1":false, "b2":false}');
+            document.getElementById('check-bloco1').checked = saved.b1;
+            document.getElementById('check-bloco2').checked = saved.b2;
+            
+            document.getElementById('day-input').value = day.dayNum;
+            document.getElementById('prev-btn').disabled = index === 0;
+            document.getElementById('next-btn').disabled = index === schedule.length - 1;
+            
+            calcProgress();
+        }
+
+        function saveCheck() {
+            const day = schedule[currentDayIndex];
+            const c1 = document.getElementById('check-bloco1').checked;
+            const c2 = document.getElementById('check-bloco2').checked;
+            localStorage.setItem(`bb-progress-${day.date.replace(/\//g, '-')}`, JSON.stringify({ b1: c1, b2: c2 }));
+            if(c1 || c2) registerActivity();
+            calcProgress();
+        }
+        
+        function calcProgress() {
+            let done = 0;
+            schedule.forEach(d => {
+                const s = JSON.parse(localStorage.getItem(`bb-progress-${d.date.replace(/\//g, '-')}`) || '{"b1":false}');
+                if(s.b1) done += 0.5; if(s.b2) done += 0.5;
+            });
+            const pct = Math.round((done/schedule.length)*100);
+            document.getElementById('overall-progress-bar').style.width = `${pct}%`;
+            document.getElementById('overall-progress-text').textContent = `${pct}%`;
+        }
+
+        function resetScheduleDate() {
+            let resets = parseInt(localStorage.getItem('bb-reset-count') || '0');
+            if(resets >= 3) { alert("Sem resets disponíveis."); return; }
+            if(confirm("Reiniciar para HOJE?")) {
+                localStorage.setItem('bb-start-date', new Date().toISOString());
+                localStorage.setItem('bb-reset-count', resets + 1);
+                location.reload();
+            }
+        }
+        function updateResetUI() {
+            let r = parseInt(localStorage.getItem('bb-reset-count')||'0');
+            document.getElementById('reset-text').textContent = `Restam ${3-r} realinhamentos`;
+            if(r>=3) document.getElementById('reset-btn-action').disabled = true;
+        }
+
+        // Listeners
+        document.getElementById('check-bloco1').addEventListener('change', saveCheck);
+        document.getElementById('check-bloco2').addEventListener('change', saveCheck);
+        document.getElementById('prev-btn').onclick = () => { if(currentDayIndex>0) updateUI(--currentDayIndex); };
+        document.getElementById('next-btn').onclick = () => { if(currentDayIndex<schedule.length-1) updateUI(++currentDayIndex); };
+        document.getElementById('jump-btn').onclick = () => {
+            const v = parseInt(document.getElementById('day-input').value)-1;
+            if(v>=0 && v<schedule.length) { currentDayIndex=v; updateUI(v); }
+        };
+
+        // Timer
+        let tId, tLeft=2400, run=false;
+        const disp = document.getElementById('timer-display');
+        const btnS = document.getElementById('start-pause-btn');
+        btnS.onclick = () => {
+            if(run) { clearInterval(tId); btnS.textContent="CONTINUAR"; }
+            else { tId=setInterval(()=>{ tLeft--; disp.textContent=`${Math.floor(tLeft/60)}:${(tLeft%60).toString().padStart(2,'0')}`; if(tLeft<=0) clearInterval(tId); },1000); btnS.textContent="PAUSAR"; }
+            run=!run;
+        };
+        document.getElementById('reset-btn').onclick = () => { clearInterval(tId); run=false; tLeft=2400; disp.textContent="40:00"; btnS.textContent="INICIAR"; };
+
+        // Init
+        initGamification();
+        const todayTime = new Date(); todayTime.setHours(0,0,0,0);
+        let todayIdx = schedule.findIndex(d => {
+            const p = d.date.split('/');
+            return new Date(p[2], p[1]-1, p[0]).getTime() === todayTime.getTime();
+        });
+        if(todayIdx === -1) todayIdx = 0;
+        currentDayIndex = todayIdx;
+        updateUI(currentDayIndex);
+        updateResetUI();
+
+    </script>
+</body>
+</html>
