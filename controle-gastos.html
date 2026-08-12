@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checklist — Controle de Gastos</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        html, body { margin: 0; font-family: 'Inter', sans-serif; scroll-behavior: smooth; }
+        body { background: linear-gradient(135deg, #0b1120 0%, #064e3b 100%); background-attachment: fixed; color: #e2e8f0; min-height: 100vh; }
+
+        .glass-card { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .progress-bar-fill { transition: width 0.4s ease-in-out; }
+
+        /* Check de TERMINADO */
+        .custom-checkbox { appearance: none; -webkit-appearance: none; height: 26px; width: 26px; background-color: rgba(0, 0, 0, 0.3); border: 2px solid rgba(255, 255, 255, 0.2); border-radius: 7px; cursor: pointer; display: inline-block; position: relative; transition: all 0.2s ease; flex-shrink: 0; }
+        .custom-checkbox:hover { border-color: rgba(52, 211, 153, 0.6); }
+        .custom-checkbox:checked { background-color: #34d399; border-color: #059669; }
+        .custom-checkbox:checked::after { content: ''; position: absolute; left: 8px; top: 3px; width: 6px; height: 13px; border: solid black; border-width: 0 3px 3px 0; transform: rotate(45deg); }
+
+        .item.done .item-title { text-decoration: line-through; color: #64748b; }
+        .item.done .item-detail { color: #475569; }
+        .item.done { opacity: .65; }
+        .item { transition: background .2s ease, opacity .2s ease; }
+        .item:hover { background: rgba(255, 255, 255, 0.04); }
+
+        /* Botão ESTUDEI HOJE */
+        .btn-dia { border: 1px dashed rgba(148, 163, 184, .45); color: #cbd5e1; background: rgba(0,0,0,.2); transition: all .18s ease; white-space: nowrap; }
+        .btn-dia:hover { border-color: #34d399; color: #6ee7b7; background: rgba(52, 211, 153, .1); }
+        .btn-dia.hoje { border-style: solid; border-color: #f59e0b; background: rgba(245, 158, 11, .18); color: #fcd34d; font-weight: 700; }
+
+        .tally { font-variant-numeric: tabular-nums; cursor: pointer; border-bottom: 1px dotted transparent; }
+        .tally:hover { border-bottom-color: rgba(148, 163, 184, .5); }
+        .btn-cal { border: 1px solid rgba(148, 163, 184, .3); background: rgba(0,0,0,.2); color: #94a3b8; transition: all .18s ease; }
+        .btn-cal:hover { border-color: #60a5fa; color: #93c5fd; background: rgba(59, 130, 246, .12); }
+
+        /* Modal de dias */
+        dialog#dlg-dias { background: #0f172a; color: #e2e8f0; border: 1px solid rgba(255,255,255,.12); border-radius: 14px; padding: 0; max-width: 430px; width: calc(100% - 2rem); box-shadow: 0 25px 50px -12px rgba(0,0,0,.8); }
+        dialog#dlg-dias::backdrop { background: rgba(2, 6, 23, .72); backdrop-filter: blur(3px); }
+        input[type="date"] { color-scheme: dark; }
+        .chip { display: inline-flex; align-items: center; gap: 6px; background: rgba(52, 211, 153, .14); border: 1px solid rgba(52, 211, 153, .3); color: #a7f3d0; font-size: .75rem; font-weight: 600; padding: 3px 6px 3px 10px; border-radius: 999px; }
+        .chip button { color: #6ee7b7; font-weight: 700; line-height: 1; padding: 0 3px; border-radius: 999px; }
+        .chip button:hover { background: rgba(239, 68, 68, .25); color: #fca5a5; }
+        .dot { display: inline-block; width: 7px; height: 7px; border-radius: 999px; background: #34d399; margin-right: 3px; }
+        .dot.mais { background: transparent; width: auto; height: auto; }
+
+        details > summary { list-style: none; cursor: pointer; }
+        details > summary::-webkit-details-marker { display: none; }
+        details[open] .chev { transform: rotate(90deg); }
+        .chev { transition: transform .2s ease; display: inline-block; }
+
+        .tag { display: inline-flex; align-items: center; gap: 4px; padding: 1px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; white-space: nowrap; }
+        .tag-curso    { background: rgba(59, 130, 246, .18);  color: #93c5fd; border: 1px solid rgba(59, 130, 246, .3); }
+        .tag-projeto  { background: rgba(34, 197, 94, .18);   color: #86efac; border: 1px solid rgba(34, 197, 94, .3); }
+        .tag-infra    { background: rgba(168, 85, 247, .18);  color: #d8b4fe; border: 1px solid rgba(168, 85, 247, .3); }
+        .tag-decisao  { background: rgba(245, 158, 11, .18);  color: #fcd34d; border: 1px solid rgba(245, 158, 11, .3); }
+        .tag-check    { background: rgba(52, 211, 153, .18);  color: #6ee7b7; border: 1px solid rgba(52, 211, 153, .35); }
+        .tag-front    { background: rgba(6, 182, 212, .18);   color: #67e8f9; border: 1px solid rgba(6, 182, 212, .3); }
+        .tag-opcional { background: rgba(148, 163, 184, .13); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, .3); }
+
+        .checkpoint-row { background: rgba(52, 211, 153, .07); border-left: 3px solid #34d399; }
+        .decisao-row { border-left: 3px solid #f59e0b; }
+
+        code { background: rgba(0,0,0,.35); padding: 1px 5px; border-radius: 4px; font-size: .85em; color: #a7f3d0; }
+        .hide-done .item.done { display: none; }
+    </style>
+</head>
+
+<body class="antialiased">
+<div class="max-w-4xl mx-auto p-4 md:p-8">
+
+    <header class="text-center mb-6">
+        <h1 class="text-3xl md:text-4xl font-extrabold text-white tracking-tight">
+            Controle de Gastos <span class="text-emerald-400">· Checklist</span>
+        </h1>
+        <p class="text-gray-400 mt-2 text-sm">
+            Marque <b class="text-amber-300">Estudei hoje</b> todo dia que você mexer no assunto.
+            Marque <b class="text-emerald-300">Terminado</b> só quando fechar de verdade.
+        </p>
+    </header>
+
+    <!-- Placar -->
+    <section class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+        <div class="glass-card rounded-xl p-4 text-center">
+            <div id="stat-dias" class="text-3xl font-black text-white tabular-nums leading-none">0</div>
+            <div class="text-[0.65rem] uppercase tracking-widest text-gray-400 mt-1">Dias estudados</div>
+        </div>
+        <div class="glass-card rounded-xl p-4 text-center">
+            <div class="flex items-center justify-center gap-1">
+                <span id="fire-icon" class="text-xl grayscale opacity-40">🔥</span>
+                <span id="stat-streak" class="text-3xl font-black text-orange-400 tabular-nums leading-none">0</span>
+            </div>
+            <div class="text-[0.65rem] uppercase tracking-widest text-gray-400 mt-1">Sequência</div>
+        </div>
+        <div class="glass-card rounded-xl p-4 text-center">
+            <div id="stat-itens" class="text-3xl font-black text-emerald-400 tabular-nums leading-none">0</div>
+            <div class="text-[0.65rem] uppercase tracking-widest text-gray-400 mt-1">Itens terminados</div>
+        </div>
+        <div class="glass-card rounded-xl p-4 text-center">
+            <div id="stat-horas" class="text-3xl font-black text-blue-300 tabular-nums leading-none">0h</div>
+            <div class="text-[0.65rem] uppercase tracking-widest text-gray-400 mt-1">Curso Java feito</div>
+        </div>
+    </section>
+
+    <!-- Progresso geral -->
+    <section class="glass-card rounded-xl p-4 mb-5">
+        <div class="flex justify-between items-center mb-2">
+            <span class="text-sm font-medium text-gray-300">Progresso do plano</span>
+            <span id="overall-text" class="text-sm font-bold text-emerald-400">0%</span>
+        </div>
+        <div class="w-full bg-gray-700/60 rounded-full h-3 overflow-hidden">
+            <div id="overall-bar" class="bg-gradient-to-r from-emerald-400 to-emerald-600 h-3 rounded-full progress-bar-fill" style="width:0%"></div>
+        </div>
+        <p id="hoje-text" class="text-xs text-gray-500 mt-2">—</p>
+    </section>
+
+    <!-- Controles -->
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <label class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer select-none">
+            <input type="checkbox" id="toggle-hide" class="accent-emerald-500 w-4 h-4">
+            Esconder itens terminados
+        </label>
+        <div class="flex gap-2">
+            <button id="export-btn" class="py-1.5 px-3 bg-gray-800/80 hover:bg-gray-700 text-gray-300 text-xs font-bold rounded-lg border border-gray-700">⬇ Exportar</button>
+            <button id="import-btn" class="py-1.5 px-3 bg-gray-800/80 hover:bg-gray-700 text-gray-300 text-xs font-bold rounded-lg border border-gray-700">⬆ Importar</button>
+            <input type="file" id="import-file" accept="application/json" class="hidden">
+        </div>
+    </div>
+
+    <!-- Lista de fases -->
+    <main id="fases-container" class="flex flex-col gap-4"></main>
+
+    <!-- Lembretes -->
+    <section class="grid md:grid-cols-2 gap-4 mt-8">
+        <div class="glass-card rounded-xl p-5">
+            <details>
+                <summary class="text-sm font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                    <span class="chev text-emerald-400">›</span> As regras do jogo
+                </summary>
+                <ol class="mt-4 space-y-2.5 text-xs text-gray-300 list-decimal list-inside">
+                    <li><b class="text-white">Uma coisa nova por vez.</b> Cada fase adiciona no máximo uma tecnologia desconhecida.</li>
+                    <li><b class="text-white">Sempre ter algo funcionando.</b> Passo pequeno que roda &gt; passo grande que não.</li>
+                    <li><b class="text-white">Fatia vertical, não camada.</b> "Cadastrar lançamento" inteiro antes de começar "editar".</li>
+                    <li><b class="text-white">Teste a API sozinha antes da tela.</b> Evita caçar no front um bug que está no Java.</li>
+                </ol>
+                <p class="mt-3 text-xs text-red-300/80 border-l-2 border-red-500/40 pl-3">
+                    <b>Não fazer agora:</b> gráfico bonito, login completo, refatorar antes de funcionar, "deixar preparado para o futuro".
+                </p>
+            </details>
+        </div>
+        <div class="glass-card rounded-xl p-5">
+            <details>
+                <summary class="text-sm font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                    <span class="chev text-emerald-400">›</span> Quando travar
+                </summary>
+                <ol class="mt-4 space-y-2.5 text-xs text-gray-300 list-decimal list-inside">
+                    <li><b class="text-white">Qual camada?</b> Chame a API com <code>curl</code>. Se responde certo, o bug é no front.</li>
+                    <li><b class="text-white">O que diz o log?</b> <code>docker compose logs -f api</code>. A causa está na 1ª linha do erro.</li>
+                    <li><b class="text-white">Funcionava antes?</b> <code>git diff</code> mostra o que você mexeu.</li>
+                    <li><b class="text-white">É ambiente ou código?</b> Certificado, porta ocupada e falta de memória parecem bug — não são.</li>
+                </ol>
+            </details>
+        </div>
+    </section>
+
+    <div class="text-center mt-8 mb-4">
+        <button id="reset-all-btn" class="py-2 px-4 bg-gray-900/60 hover:bg-red-900/40 text-gray-500 hover:text-red-300 text-xs font-bold rounded-lg border border-gray-800 border-dashed transition-all">
+            🧹 Zerar todo o progresso
+        </button>
+        <p class="text-[0.65rem] text-gray-600 mt-3">
+            Progresso salvo neste navegador. Exporte de vez em quando.
+        </p>
+    </div>
+</div>
+
+<!-- Modal: lançar ou apagar um dia específico -->
+<dialog id="dlg-dias">
+    <div class="p-5">
+        <p class="text-[0.65rem] uppercase tracking-widest text-gray-500 font-bold">Dias de estudo</p>
+        <h3 id="dlg-titulo" class="text-base font-bold text-white leading-snug mt-1 mb-4">...</h3>
+
+        <label class="text-xs text-gray-400 block mb-1.5">Esqueceu de marcar? Escolha o dia:</label>
+        <div class="flex gap-2 mb-4">
+            <input type="date" id="dlg-data" class="flex-1 bg-black/40 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 outline-none">
+            <button id="dlg-add" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg whitespace-nowrap">+ Lançar</button>
+        </div>
+
+        <div class="flex items-baseline justify-between mb-2">
+            <span class="text-xs text-gray-400">Dias marcados</span>
+            <span id="dlg-contagem" class="text-xs font-bold text-emerald-400 tabular-nums"></span>
+        </div>
+        <div id="dlg-chips" class="flex flex-wrap gap-1.5 mb-5 max-h-40 overflow-y-auto"></div>
+
+        <button id="dlg-fechar" class="w-full py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold rounded-lg border border-gray-700">Fechar</button>
+    </div>
+</dialog>
+
+<script>
+// =============================================================================
+//  CONTROLE DE GASTOS — checklist do plano de aprendizado
+//  Dois marcadores por item:
+//    · "Estudei hoje"  → acumula dias (uma seção da Udemy leva vários)
+//    · "Terminado"     → fecha o item
+// =============================================================================
+
+const fases = [
+    {
+        id: "f0", num: "Fase 0", titulo: "Terminar o Java que falta",
+        cor: "#fbbf24", entrega: "App de console com CSV · sem Spring, sem banco, sem web",
+        itens: [
+            { id: "f0-heranca", tag: "curso", t: "Herança e polimorfismo",
+              meta: "Seção 13 · 13 aulas", min: 121,
+              d: "Base para entender a hierarquia de exceções. No projeto: modele Lancamento com descricao, valor, data e tipo." },
+            { id: "f0-interfaces", tag: "curso", t: "Interfaces",
+              meta: "Seção 16 · 14 aulas", min: 191,
+              d: "O mais importante: JpaRepository É uma interface que o Spring implementa sozinho. No projeto: RepositorioDeLancamentos com salvar, listar e remover, guardando numa lista em memória." },
+            { id: "f0-excecoes", tag: "curso", t: "Tratamento de exceções",
+              meta: "Seção 14 · 12 aulas", min: 106,
+              d: "É como a API vai devolver 404 e 400 em vez de erro feio. No projeto: ValorInvalidoException para valor zero ou negativo." },
+            { id: "f0-generics", tag: "curso", t: "Generics, Set e Map",
+              meta: "Seção 17 · 14 aulas", min: 127,
+              d: "List<Lancamento>, Optional<T>, Map<TipoLancamento, BigDecimal>. No projeto: agrupe os lançamentos do mês por tipo num Map." },
+            { id: "f0-lambdas", tag: "curso", t: "Programação funcional e lambdas",
+              meta: "Seção 18 · 13 aulas", min: 124,
+              d: "No projeto: calcule o total de cada tipo com stream().filter().map().reduce()." },
+            { id: "f0-arquivos", tag: "curso", t: "Trabalhando com arquivos",
+              meta: "Seção 15 · 10 aulas", min: 39,
+              d: "Destrava importar o extrato CSV do banco em vez de digitar tudo à mão. No projeto: salve e carregue os lançamentos de um .csv." },
+            { id: "f0-bigdecimal", tag: "decisao", t: "Usar BigDecimal para valores, nunca double",
+              d: "Com dinheiro, 0.1 + 0.2 dá 0.30000000000000004 e vira centavo errado no fechamento do mês." },
+            { id: "f0-enum", tag: "decisao", t: "enum TipoLancamento + uma única classe Lancamento",
+              d: "RECEITA, GASTO_FIXO, GASTO_VARIAVEL, INVESTIMENTO. Uma classe só — não uma para cada tipo." },
+            { id: "f0-check", tag: "check", t: "PRONTO QUANDO: os dados sobrevivem ao fechar o programa",
+              d: "Cadastrar cinco lançamentos no terminal, fechar, abrir de novo — e continuarem lá." }
+        ]
+    },
+    {
+        id: "f1", num: "Fase 1", titulo: "A API rodando no seu PC",
+        cor: "#86efac", entrega: "Novo aqui: Spring Boot. Referência: Java/SpringBootCrud",
+        itens: [
+            { id: "f1-curso", tag: "curso", t: "Fazer os módulos de Spring Boot do curso",
+              d: "Única coisa nova da fase. Leia o código do SpringBootCrud sempre que travar." },
+            { id: "f1-projeto", tag: "projeto", t: "Criar o projeto em Java/ControleGastos/api",
+              d: "Pelo start.spring.io ou copiando a estrutura do SpringBootCrud." },
+            { id: "f1-deps", tag: "projeto", t: "Dependências: Web, Spring Data JPA, H2 e Validation",
+              d: "H2 agora; o Postgres entra só na Fase 2." },
+            { id: "f1-entidade", tag: "projeto", t: "Entidade Lancamento",
+              d: "BigDecimal valor, LocalDate data e o enum TipoLancamento." },
+            { id: "f1-repo", tag: "projeto", t: "LancamentoRepository extends JpaRepository<Lancamento, Long>",
+              d: "Aqui a interface da Fase 0 volta: você declara, o Spring implementa." },
+            { id: "f1-service", tag: "projeto", t: "Service com o CRUD e a exceção de \"não encontrado\"",
+              d: "Toda a regra fica aqui, não no controller." },
+            { id: "f1-controller", tag: "projeto", t: "Controller com os cinco endpoints",
+              d: "GET lista, GET por id, POST, PUT e DELETE." },
+            { id: "f1-advice", tag: "projeto", t: "@RestControllerAdvice traduzindo as exceções em 404 e 400",
+              d: "É o pagamento do módulo de exceções da Fase 0." },
+            { id: "f1-validacao", tag: "projeto", t: "Validação com @NotBlank, @NotNull, @Positive e @Valid",
+              d: "Erro de entrada vira 400 com mensagem, não stack trace." },
+            { id: "f1-resumo", tag: "projeto", t: "Endpoint de resumo do mês: total por tipo",
+              d: "É aqui que os lambdas da Fase 0 voltam." },
+            { id: "f1-http", tag: "projeto", t: "Testar tudo com .http ou Postman, sem tela",
+              d: "Se a API está certa sozinha, qualquer bug depois é do front." },
+            { id: "f1-tela", tag: "projeto", t: "Uma tela HTML simples servida pelo próprio Spring",
+              d: "Igual à do SpringBootCrud. Nada de framework ainda." },
+            { id: "f1-teste", tag: "projeto", t: "Escrever pelo menos um teste automatizado do service",
+              d: "Um só já muda o jogo quando você começar a mexer na infraestrutura." },
+            { id: "f1-check", tag: "check", t: "PRONTO QUANDO: uma semana de gastos reais registrada",
+              d: "Se for chato de usar, conserte AGORA — antes de complicar a infraestrutura." }
+        ]
+    },
+    {
+        id: "f2", num: "Fase 2", titulo: "Postgres em Docker (ainda no PC)",
+        cor: "#93c5fd", entrega: "Novo aqui: Docker e Postgres. O H2 apaga tudo ao reiniciar",
+        itens: [
+            { id: "f2-docker", tag: "infra", t: "Instalar o Docker Desktop",
+              d: "Entender os três comandos básicos: up, down e logs." },
+            { id: "f2-compose", tag: "infra", t: "docker-compose.yml só com o Postgres",
+              d: "Com volume nomeado, para os dados persistirem." },
+            { id: "f2-driver", tag: "projeto", t: "Trocar a dependência do H2 pelo driver do Postgres", d: "" },
+            { id: "f2-env", tag: "projeto", t: "Configurar a conexão por variável de ambiente",
+              d: "SPRING_DATASOURCE_URL e companhia — não fixa no application.properties. Sem isso, a Fase 3 vira dor de cabeça." },
+            { id: "f2-flyway", tag: "infra", t: "Trocar ddl-auto=create-drop por Flyway",
+              d: "O schema vira arquivo de migration versionado." },
+            { id: "f2-migrar", tag: "projeto", t: "Migrar seus lançamentos da Fase 1",
+              d: "Ou recadastrar, se forem poucos." },
+            { id: "f2-check", tag: "check", t: "PRONTO QUANDO: os dados sobrevivem ao desligar o PC",
+              d: "Desliga, liga no dia seguinte, sobe o projeto e está tudo lá." }
+        ]
+    },
+    {
+        id: "f3", num: "Fase 3", titulo: "Rodando no Raspberry Pi",
+        cor: "#f0abfc", entrega: "Novo aqui: empacotar em container e fazer deploy",
+        itens: [
+            { id: "f3-pi", tag: "infra", t: "Preparar o Pi",
+              d: "Sistema atualizado, Docker instalado e acesso por SSH." },
+            { id: "f3-ssd", tag: "infra", t: "Se possível, bootar de um SSD USB em vez do cartão SD",
+              d: "Cartão SD morre — e agora é o seu histórico financeiro que está nele." },
+            { id: "f3-dockerfile", tag: "infra", t: "Dockerfile da API",
+              d: "FROM eclipse-temurin:21-jre, copiando o .jar." },
+            { id: "f3-build", tag: "infra", t: "Gerar o .jar no PC e buildar a imagem NO PI",
+              d: "O .jar é portátil, mas a imagem não: PC é amd64, o Pi é arm64." },
+            { id: "f3-compose", tag: "infra", t: "Juntar API e Postgres no mesmo docker-compose.yml", d: "" },
+            { id: "f3-health", tag: "infra", t: "healthcheck no Postgres + depends_on: service_healthy",
+              d: "Sem isso o Spring sobe antes do banco aceitar conexão e morre." },
+            { id: "f3-restart", tag: "infra", t: "restart: unless-stopped nos dois serviços",
+              d: "Para voltarem sozinhos depois de queda de luz." },
+            { id: "f3-mem", tag: "infra", t: "Limitar memória",
+              d: "mem_limit: 1g no serviço e -XX:MaxRAMPercentage=75 na JVM." },
+            { id: "f3-backup", tag: "infra", t: "Backup automático",
+              d: "pg_dump diário copiando para FORA do Pi. Backup no mesmo disco não é backup." },
+            { id: "f3-check", tag: "check", t: "PRONTO QUANDO: o sistema volta sozinho depois de tirar da tomada",
+              d: "Com os dados intactos e um backup recente guardado em outro lugar." }
+        ]
+    },
+    {
+        id: "f4", num: "Fase 4", titulo: "O front-end em Next na Vercel",
+        cor: "#67e8f9", entrega: "Novo aqui: Next, TypeScript, Vercel e túnel — a fase mais longa",
+        itens: [
+            { id: "f4a-tunnel", tag: "infra", t: "4a · Instalar o cloudflared no Pi e criar o túnel",
+              d: "Sem abrir porta no roteador — provedor com CGNAT não te dá IP público mesmo." },
+            { id: "f4a-compose", tag: "infra", t: "4a · cloudflared no compose, sem publicar a porta 8080",
+              d: "Ele alcança a API pela rede interna do Docker." },
+            { id: "f4a-auth", tag: "infra", t: "4a · Proteger a API com HTTP Basic",
+              d: "Um usuário só, com a senha vindo de variável de ambiente." },
+            { id: "f4b-ts", tag: "front", t: "4b · Aprender o básico de TypeScript",
+              d: "interface, tipos em função e Omit<>." },
+            { id: "f4b-next", tag: "front", t: "4b · create-next-app com TypeScript em Java/ControleGastos/web",
+              d: "Erro de certificado é a interceptação de HTTPS da sua rede — resolve com npm config set cafile." },
+            { id: "f4b-types", tag: "front", t: "4b · Criar as interface TypeScript espelhando o JSON da API", d: "" },
+            { id: "f4b-lista", tag: "front", t: "4b · Tela de lista lendo por Server Component",
+              d: "A chamada sai do servidor do Next: não existe CORS e a senha nunca chega ao navegador." },
+            { id: "f4b-form", tag: "front", t: "4b · Formulário de cadastro com Server Action + revalidatePath", d: "" },
+            { id: "f4b-crud", tag: "front", t: "4b · Editar e excluir",
+              d: "Uma fatia vertical de cada vez — termine editar antes de começar excluir." },
+            { id: "f4b-filtro", tag: "front", t: "4b · Filtro por mês e o resumo no topo",
+              d: "Consome o endpoint de resumo da Fase 1." },
+            { id: "f4b-deploy", tag: "front", t: "4b · Deploy na Vercel",
+              d: "Com as variáveis de ambiente configuradas lá." },
+            { id: "f4-check", tag: "check", t: "PRONTO QUANDO: você registra um gasto pelo celular, na rua",
+              d: "Regra de ouro: o navegador NUNCA fala direto com o Pi. Sempre navegador → Next → túnel → API." }
+        ]
+    },
+    {
+        id: "f5", num: "Fase 5", titulo: "Melhorias (cada uma quando doer)",
+        cor: "#cbd5e1", entrega: "Nada aqui é pré-requisito. Faça quando o problema aparecer",
+        itens: [
+            { id: "f5-paginacao", tag: "opcional", t: "Paginação", d: "Quando a lista passar de umas 100 linhas e ficar lenta." },
+            { id: "f5-dtos", tag: "opcional", t: "DTOs separados da entidade", d: "Quando um campo aparecer no JSON e você não quiser aquilo lá." },
+            { id: "f5-recorrentes", tag: "opcional", t: "Gastos fixos recorrentes", d: "Quando cansar de digitar o aluguel todo mês." },
+            { id: "f5-csv", tag: "opcional", t: "Importar CSV do banco", d: "Quando cansar de digitar tudo. Aqui volta o módulo de arquivos." },
+            { id: "f5-graficos", tag: "opcional", t: "Gráficos", d: "Evolução mês a mês. É a recompensa — guarde para o final." },
+            { id: "f5-login", tag: "opcional", t: "Login de verdade", d: "Quando mais alguém for usar." },
+            { id: "f5-metas", tag: "opcional", t: "Metas de orçamento", d: "\"Quero gastar no máximo X com mercado este mês.\"" }
+        ]
+    }
+];
+
+const TAGS = {
+    curso:    { cls: "tag-curso",    icon: "🎓", nome: "Curso" },
+    projeto:  { cls: "tag-projeto",  icon: "⌨️", nome: "Projeto" },
+    infra:    { cls: "tag-infra",    icon: "🐳", nome: "Infra" },
+    decisao:  { cls: "tag-decisao",  icon: "⚠️", nome: "Decisão" },
+    check:    { cls: "tag-check",    icon: "🏁", nome: "Checkpoint" },
+    front:    { cls: "tag-front",    icon: "🖥️", nome: "Front" },
+    opcional: { cls: "tag-opcional", icon: "🔧", nome: "Opcional" }
+};
+
+const TODOS = fases.flatMap(f => f.itens);
+const TOTAL = TODOS.length;
+const MIN_CURSO = TODOS.reduce((a, i) => a + (i.min || 0), 0);
+
+// ---------- estado ----------
+// { id: { dias: ["2026-08-12", ...], fim: "2026-08-12" | null } }
+const KEY = 'cg-checklist';
+
+function hojeISO() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function paraBR(iso) { const [a, m, d] = iso.split('-'); return `${d}/${m}/${a}`; }
+
+function carregar() {
+    let st = {};
+    try { st = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { st = {}; }
+
+    // migra o formato antigo (cronograma por dias), se existir
+    if (!Object.keys(st).length) {
+        try {
+            const velho = JSON.parse(localStorage.getItem('cg-tarefas') || '{}');
+            Object.entries(velho).forEach(([id, v]) => {
+                if (v && v.done) st[id] = { dias: [], fim: hojeISO() };
+            });
+            if (Object.keys(st).length) localStorage.setItem(KEY, JSON.stringify(st));
+        } catch (e) { /* ignora */ }
+    }
+    return st;
+}
+let estado = carregar();
+function salvar() { localStorage.setItem(KEY, JSON.stringify(estado)); }
+function reg(id) {
+    if (!estado[id]) estado[id] = { dias: [], fim: null };
+    if (!Array.isArray(estado[id].dias)) estado[id].dias = [];
+    return estado[id];
+}
+const terminado = id => !!(estado[id] && estado[id].fim);
+const dias = id => (estado[id] && estado[id].dias) || [];
+
+// ---------- ações ----------
+function toggleDiaEstudo(id) {
+    const r = reg(id);
+    const h = hojeISO();
+    const i = r.dias.indexOf(h);
+    if (i >= 0) r.dias.splice(i, 1); else r.dias.push(h);
+    r.dias.sort();
+    salvar();
+    render();
+}
+function toggleTerminado(id, marcado) {
+    const r = reg(id);
+    r.fim = marcado ? hojeISO() : null;
+    // terminar sem nunca ter marcado um dia: conta o dia de hoje
+    if (marcado && r.dias.length === 0) r.dias.push(hojeISO());
+    salvar();
+    render();
+}
+
+// ---------- estatísticas ----------
+function todasAsDatas() {
+    const s = new Set();
+    Object.values(estado).forEach(v => (v.dias || []).forEach(d => s.add(d)));
+    return [...s].sort();
+}
+function calcStreak() {
+    const set = new Set(todasAsDatas());
+    if (!set.size) return 0;
+    const d = new Date();
+    // a sequência continua valendo se você ainda não marcou nada hoje
+    if (!set.has(hojeISO())) d.setDate(d.getDate() - 1);
+    let n = 0;
+    while (true) {
+        const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        if (!set.has(iso)) break;
+        n++;
+        d.setDate(d.getDate() - 1);
+    }
+    return n;
+}
+function fmtHoras(min) {
+    const h = Math.floor(min / 60), m = min % 60;
+    if (!h) return `${m}min`;
+    return m ? `${h}h ${String(m).padStart(2, '0')}` : `${h}h`;
+}
+
+// ---------- render ----------
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+function dotsHTML(n) {
+    if (!n) return '';
+    const mostra = Math.min(n, 10);
+    let html = '';
+    for (let i = 0; i < mostra; i++) html += '<span class="dot"></span>';
+    if (n > 10) html += `<span class="dot mais text-emerald-400 text-[0.65rem] font-bold">+${n - 10}</span>`;
+    return html;
+}
+
+function itemHTML(item) {
+    const tag = TAGS[item.tag] || TAGS.projeto;
+    const fim = terminado(item.id);
+    const ds = dias(item.id);
+    const marcadoHoje = ds.includes(hojeISO());
+    const extra = item.tag === 'check' ? 'checkpoint-row' : (item.tag === 'decisao' ? 'decisao-row' : '');
+    const metaTxt = [item.meta, item.min ? fmtHoras(item.min) : null].filter(Boolean).join(' · ');
+    const titleAttr = ds.length ? ` title="Dias: ${ds.map(paraBR).join(', ')}"` : '';
+
+    return `
+    <div class="item ${fim ? 'done' : ''} ${extra} flex flex-wrap md:flex-nowrap items-start gap-3 p-3 rounded-lg" data-item="${item.id}">
+        <input type="checkbox" class="custom-checkbox mt-0.5" data-fim="${item.id}" ${fim ? 'checked' : ''} title="Marcar como terminado">
+        <div class="flex-1 min-w-0 order-3 md:order-none basis-full md:basis-auto">
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="tag ${tag.cls}">${tag.icon} ${tag.nome}</span>
+                ${metaTxt ? `<span class="text-[0.65rem] font-mono text-gray-500">${esc(metaTxt)}</span>` : ''}
+            </div>
+            <p class="item-title text-base font-semibold text-white leading-snug mt-1">${esc(item.t)}</p>
+            ${item.d ? `<p class="item-detail text-xs text-gray-400 mt-1 leading-relaxed">${esc(item.d)}</p>` : ''}
+        </div>
+        <div class="flex items-center gap-2 ml-auto flex-shrink-0">
+            <button class="tally text-xs ${ds.length ? 'text-emerald-300' : 'text-gray-600'} whitespace-nowrap"
+                    data-cal="${item.id}"${titleAttr}>
+                ${dotsHTML(ds.length)} ${ds.length ? `<b>${ds.length}</b> ${ds.length === 1 ? 'dia' : 'dias'}` : 'nenhum dia'}
+            </button>
+            <button class="btn-cal text-[0.7rem] px-2 py-1.5 rounded-lg" data-cal="${item.id}"
+                    title="Lançar ou apagar um dia específico">📅</button>
+            <button class="btn-dia ${marcadoHoje ? 'hoje' : ''} text-[0.7rem] font-bold px-2.5 py-1.5 rounded-lg" data-dia="${item.id}">
+                ${marcadoHoje ? '✓ Estudei hoje' : '+ Estudei hoje'}
+            </button>
+        </div>
+    </div>`;
+}
+
+function faseHTML(fase) {
+    const feitos = fase.itens.filter(i => terminado(i.id)).length;
+    const pct = Math.round((feitos / fase.itens.length) * 100);
+    const diasFase = new Set();
+    fase.itens.forEach(i => dias(i.id).forEach(d => diasFase.add(d)));
+    const aberta = pct < 100;
+
+    return `
+    <details class="glass-card rounded-xl overflow-hidden" ${aberta ? 'open' : ''}>
+        <summary class="px-5 py-4 flex items-center gap-3 hover:bg-white/5">
+            <span class="chev text-lg" style="color:${fase.cor}">›</span>
+            <div class="flex-1 min-w-0">
+                <div class="flex items-baseline gap-2 flex-wrap">
+                    <span class="text-xs font-black uppercase tracking-widest" style="color:${fase.cor}">${fase.num}</span>
+                    <span class="text-base font-bold text-white">${esc(fase.titulo)}</span>
+                </div>
+                <p class="text-[0.7rem] text-gray-500 mt-0.5">${esc(fase.entrega)}</p>
+                <div class="w-full bg-gray-700/60 rounded-full h-1.5 mt-2 overflow-hidden">
+                    <div class="h-1.5 rounded-full progress-bar-fill" style="width:${pct}%;background:${fase.cor}"></div>
+                </div>
+            </div>
+            <div class="text-right flex-shrink-0">
+                <div class="text-sm font-bold tabular-nums" style="color:${fase.cor}">${feitos}/${fase.itens.length}</div>
+                <div class="text-[0.6rem] text-gray-500 uppercase tracking-wide">${diasFase.size} ${diasFase.size === 1 ? 'dia' : 'dias'}</div>
+            </div>
+        </summary>
+        <div class="px-3 pb-3 flex flex-col gap-1 border-t border-white/5 pt-2">
+            ${fase.itens.map(itemHTML).join('')}
+        </div>
+    </details>`;
+}
+
+function render() {
+    // preserva quais fases estão abertas
+    const abertas = {};
+    document.querySelectorAll('#fases-container > details').forEach((el, i) => abertas[i] = el.open);
+
+    const cont = document.getElementById('fases-container');
+    cont.innerHTML = fases.map(faseHTML).join('');
+    cont.querySelectorAll('details').forEach((el, i) => { if (abertas[i] !== undefined) el.open = abertas[i]; });
+
+    cont.querySelectorAll('[data-dia]').forEach(b => b.onclick = () => toggleDiaEstudo(b.dataset.dia));
+    cont.querySelectorAll('[data-fim]').forEach(c => c.onchange = () => toggleTerminado(c.dataset.fim, c.checked));
+    cont.querySelectorAll('[data-cal]').forEach(b => b.onclick = () => abrirCalendario(b.dataset.cal));
+
+    // placar
+    const datas = todasAsDatas();
+    const feitos = TODOS.filter(i => terminado(i.id)).length;
+    const minFeitos = TODOS.filter(i => terminado(i.id)).reduce((a, i) => a + (i.min || 0), 0);
+    const streak = calcStreak();
+
+    document.getElementById('stat-dias').textContent = datas.length;
+    document.getElementById('stat-streak').textContent = streak;
+    document.getElementById('stat-itens').textContent = `${feitos}`;
+    document.getElementById('stat-horas').textContent = fmtHoras(minFeitos);
+    document.getElementById('stat-horas').nextElementSibling.textContent =
+        `Curso Java · de ${fmtHoras(MIN_CURSO)}`;
+
+    const fi = document.getElementById('fire-icon');
+    fi.classList.toggle('grayscale', streak === 0);
+    fi.classList.toggle('opacity-40', streak === 0);
+
+    const pct = Math.round((feitos / TOTAL) * 100);
+    document.getElementById('overall-bar').style.width = `${pct}%`;
+    document.getElementById('overall-text').textContent = `${pct}%`;
+
+    const marcadosHoje = TODOS.filter(i => dias(i.id).includes(hojeISO()));
+    document.getElementById('hoje-text').innerHTML = marcadosHoje.length
+        ? `${feitos} de ${TOTAL} itens terminados · <span class="text-amber-300">hoje você marcou ${marcadosHoje.length} ${marcadosHoje.length === 1 ? 'item' : 'itens'}</span>`
+        : `${feitos} de ${TOTAL} itens terminados · <span class="text-gray-500">nada marcado hoje ainda</span>`;
+}
+
+// ---------- modal: lançar / apagar um dia específico ----------
+const dlg = document.getElementById('dlg-dias');
+let itemAberto = null;
+
+function abrirCalendario(id) {
+    itemAberto = id;
+    const item = TODOS.find(i => i.id === id);
+    document.getElementById('dlg-titulo').textContent = item ? item.t : '';
+    const inp = document.getElementById('dlg-data');
+    inp.max = hojeISO();
+    inp.value = hojeISO();
+    renderChips();
+    dlg.showModal();
+}
+
+function renderChips() {
+    const ds = dias(itemAberto);
+    const box = document.getElementById('dlg-chips');
+    box.innerHTML = ds.length
+        ? ds.map(d => `<span class="chip">${paraBR(d)}<button data-rm="${d}" title="Apagar este dia">×</button></span>`).join('')
+        : '<span class="text-xs text-gray-500">Nenhum dia marcado ainda.</span>';
+    box.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => removerDia(b.dataset.rm));
+    document.getElementById('dlg-contagem').textContent =
+        ds.length ? `${ds.length} ${ds.length === 1 ? 'dia' : 'dias'}` : '';
+}
+
+function adicionarDia() {
+    const v = document.getElementById('dlg-data').value;
+    if (!v) return;
+    if (v > hojeISO()) { alert('Não dá para marcar um dia que ainda não chegou.'); return; }
+    const r = reg(itemAberto);
+    if (!r.dias.includes(v)) { r.dias.push(v); r.dias.sort(); salvar(); }
+    renderChips();
+    render();
+}
+
+function removerDia(d) {
+    const r = reg(itemAberto);
+    r.dias = r.dias.filter(x => x !== d);
+    if (!r.dias.length && !r.fim) delete estado[itemAberto];
+    salvar();
+    renderChips();
+    render();
+}
+
+document.getElementById('dlg-add').onclick = adicionarDia;
+document.getElementById('dlg-data').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); adicionarDia(); } });
+document.getElementById('dlg-fechar').onclick = () => dlg.close();
+dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
+
+// ---------- controles ----------
+document.getElementById('toggle-hide').onchange = e => {
+    document.body.classList.toggle('hide-done', e.target.checked);
+    localStorage.setItem('cg-hide-done', e.target.checked ? '1' : '0');
+};
+if (localStorage.getItem('cg-hide-done') === '1') {
+    document.getElementById('toggle-hide').checked = true;
+    document.body.classList.add('hide-done');
+}
+
+document.getElementById('export-btn').onclick = () => {
+    const blob = new Blob([JSON.stringify({ versao: 2, itens: estado, em: new Date().toISOString() }, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `controle-gastos-progresso-${hojeISO()}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+};
+document.getElementById('import-btn').onclick = () => document.getElementById('import-file').click();
+document.getElementById('import-file').onchange = e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+        try {
+            const d = JSON.parse(r.result);
+            if (!d.itens) throw new Error('formato');
+            estado = d.itens;
+            salvar();
+            render();
+        } catch (err) { alert('Arquivo inválido.'); }
+    };
+    r.readAsText(f);
+};
+document.getElementById('reset-all-btn').onclick = () => {
+    if (!confirm('Isso apaga TODOS os dias marcados e itens terminados. Exporte antes se quiser guardar. Continuar?')) return;
+    localStorage.removeItem(KEY);
+    estado = {};
+    render();
+};
+
+render();
+</script>
+</body>
+</html>
